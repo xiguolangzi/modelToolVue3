@@ -1,7 +1,7 @@
 <template>
   <el-dialog 
     v-model="importProductDialogRef" 
-    title="导入Excel标准明细" 
+    title="导入Excel自定义1明细" 
     width="70%" 
     style="margin-top: 100px !important;"
     :close-on-click-modal="false" 
@@ -199,10 +199,10 @@ const invalidDataCount = computed(() => {
 
 // 表格列配置（根据您的Java实体类字段）
 const tableColumns = [
-  { prop: 'codigoPais', label: '欧盟税号-国家代码', width: 120 },
-  { prop: 'nifOperador', label: '欧盟税号-编号', width: 130 },
-  { prop: 'nombreOperador', label: '经营者姓名', width: 150 },
-  { prop: 'claveOperacion', label: '操作代码', width: 100 },
+  { prop: 'codigoPais', label: '欧盟国家', width: 120 },
+  { prop: 'nifOperador', label: '欧盟税号', width: 130 },
+  { prop: 'nombreOperador', label: '公司名称', width: 150 },
+  { prop: 'claveOperacion', label: '销售/购买', width: 100 },
   { prop: 'baseImponible', label: '交易金额', width: 110 },
   { prop: 'ejercicioRectificacion', label: '修正的财政年度', width: 130 },
   { prop: 'periodoRectificacion', label: '修正的期间', width: 100 },
@@ -214,10 +214,10 @@ const tableColumns = [
 
 // Excel列名到实体字段的映射
 const columnMapping = {
-  "欧盟税号-国家代码": 'codigoPais',
-  "欧盟税号-编号": 'nifOperador',
-  "经营者姓名": 'nombreOperador',
-  "操作代码": 'claveOperacion',
+  "欧盟国家": 'codigoPais',
+  "欧盟税号": 'nifOperador',
+  "公司名称": 'nombreOperador',
+  "销售/购买": 'claveOperacion',
   "交易金额": 'baseImponible',
   "修正的财政年度": 'ejercicioRectificacion',
   "修正的期间": 'periodoRectificacion',
@@ -246,7 +246,7 @@ function openImportProductDialog() {
 
 /** 下载模板 */
 function importTemplate() {
-  proxy.download("models/modelo349OperadorIntra/importTemplate", {}, `349导入明细模板.xlsx`)
+  proxy.download("models/modelo349OperadorIntra/importCustomer1Template", {}, `349导入明细模板.xlsx`)
 }
 
 // 处理文件选择
@@ -366,10 +366,14 @@ const mapAndValidateData = (data) => {
             break
             
           case 'claveOperacion':
-            if (!['E', 'M', 'H', 'T', 'A', 'S', 'I', 'R', 'D', 'C'].includes(value)) {
+            if (value== '销售') {
+              mappedItem[fieldName] = 'E'
+            } else if (value== '采购') {
+              mappedItem[fieldName] = 'I'
+            } else {
               errors.push(`未知的操作代码`)
+              mappedItem[fieldName] = value
             }
-            mappedItem[fieldName] = value
             break
             
           case 'baseImponible':

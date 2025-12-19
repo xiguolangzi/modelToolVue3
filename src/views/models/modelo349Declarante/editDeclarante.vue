@@ -17,7 +17,6 @@
             <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
             <el-button type="warning" @click="handleExport349" :loading="submitting">导出349模板</el-button>
             <el-button type="danger" @click="goBack" :loading="submitting">退出</el-button>
-            
           </el-button-group>
 
         </div>
@@ -228,7 +227,22 @@
           </div>
 
           <div>
-            <el-button type="warning" @click="importItems" >Excel导入明细</el-button>
+            
+            <el-dropdown trigger="click" class="export-dropdown" >
+              <el-button type="primary" plain icon="Upload">
+                导入明细<el-icon class="el-icon--right"><arrow-down /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu >
+                  <el-dropdown-item @click="importItems" :loading="loading">
+                    <el-button type="warning" link icon="Upload" >Excel导入标准明细</el-button>
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="importItemsByCustomer1">
+                    <el-button type="primary" link icon="Upload">Excel导入自定义1明细</el-button>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </div>
 
@@ -406,7 +420,11 @@
 
     </el-card>
 
+    <!-- 导入标准明细 -->
     <ImportItemsDialog ref="importItemsDialog" :detailList="modelo349OperadorIntraList" @changeDetail="handleChangeDetails" />
+
+    <!-- 导入自定义明细1 -->
+    <ImportItemsByCustomer1Dialog ref="importItemsByCustomer1Dialog" :detailList="modelo349OperadorIntraList" @changeDetail="handleChangeDetails" />
 
   </div>
 </template>
@@ -419,7 +437,7 @@ import { selectDeclarantes } from "@/api/models/configDeclarante"
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter, useRoute } from "vue-router";
 import ImportItemsDialog from './ImportItemsDialog.vue';
-import { el } from 'element-plus/es/locales.mjs';
+import ImportItemsByCustomer1Dialog from './ImportItemsByCustomer1Dialog .vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -437,6 +455,7 @@ const submitting = ref(false)
 const modelo349DeclaranteRef = ref(null)
 const operadorTableRef = ref(null)
 const importItemsDialog = ref(null)
+const importItemsByCustomer1Dialog = ref(null)
 
 
 // 是否更正
@@ -468,6 +487,11 @@ async function  handleExport349() {
 // 导入明细组件
 function importItems(){
   importItemsDialog.value.openImportProductDialog()
+}
+
+// 
+function importItemsByCustomer1(){
+  importItemsByCustomer1Dialog.value.openImportProductDialog()
 }
 
 // 导入更新明细
