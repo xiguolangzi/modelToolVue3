@@ -6,6 +6,7 @@
         <div class="header-content">
           <div class="title">
             <h2>349申报数据详情</h2>
+             <el-tag type="success">流水编号：{{ form.id }}</el-tag>
              <dict-tag :options="model349_status" :value="form.estado"/>
           </div>
 
@@ -496,7 +497,7 @@ function importItemsByCustomer1(){
 
 // 导入更新明细
 function handleChangeDetails(details) { 
-  Object.assign(modelo349OperadorIntraList.value, details)
+  modelo349OperadorIntraList.value = [...modelo349OperadorIntraList.value, ...details]
   // 从新计算汇总
   calculateTotals();
 }
@@ -539,9 +540,6 @@ const data = reactive({
     ],
     nombreDeclarante: [
       { required: true, message: "申报人姓名或公司名称不能为空", trigger: "blur" }
-    ],
-    numeroIdentificativo: [
-      { required: true, message: "申报识别号，13位数字不能为空", trigger: "blur" }
     ],
     periodo: [
       { required: true, message: "申报期间不能为空", trigger: "change" }
@@ -694,7 +692,6 @@ function validateCountryCode(row) {
 }
 
 // 计算总计
-// 计算总计
 function calculateTotals() {
   const count = modelo349OperadorIntraList.value.length // 整数数量
   const sumAmount = (field) => {
@@ -735,12 +732,12 @@ async function handleSubmit() {
       for (const row of modelo349OperadorIntraList.value) {
         if(isRectificacion.value){
           if(row.baseImponibleRectificada == null || row.baseImponibleRectificada == undefined || row.baseImponibleRectificada <= 0){
-            ElMessage.warning('更新记录的“更新金额”不能小于0')
+            ElMessage.warning('记录明细中“修正后金额”不能小于0')
             return
           }
         } else {
           if(row.baseImponible == null || row.baseImponible == undefined || row.baseImponible <= 0){
-            ElMessage.warning('记录的“金额”不能小于0')
+            ElMessage.warning('记录明细中“交易金额”不能小于0')
             return
           }
         }

@@ -360,7 +360,8 @@ const mapAndValidateData = (data) => {
             
           case 'nombreOperador':
             if (value.length > 40) {
-              errors.push(`经营者姓名长度不能超过40个字符`)
+              // 去掉前后空格，截取前40个字符
+              value = value.trim().substring(0, 40)
             }
             mappedItem[fieldName] = value
             break

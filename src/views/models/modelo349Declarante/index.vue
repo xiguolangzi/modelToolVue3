@@ -1,6 +1,14 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="100px">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="90px">
+      <el-form-item label="申报人税号" prop="nifDeclarante">
+        <el-input
+          v-model="queryParams.nifDeclarante"
+          placeholder="请输入申报人NIF税号"
+          clearable
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
       <el-form-item label="财政年度" prop="ejercicio">
         <el-input
           v-model="queryParams.ejercicio"
@@ -9,26 +17,28 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="申报人NIF" prop="nifDeclarante">
-        <el-input
-          v-model="queryParams.nifDeclarante"
-          placeholder="请输入申报人NIF税号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="申报人姓名" prop="nombreDeclarante">
-        <el-input
-          v-model="queryParams.nombreDeclarante"
-          placeholder="请输入申报人姓名或公司名称"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="申报期间" prop="periodo">
+        <el-select v-model="queryParams.periodo" placeholder="请选择申报期间" clearable>
+          <el-option
+            v-for="dict in model349_periodo"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="申报识别号" prop="numeroIdentificativo">
         <el-input
           v-model="queryParams.numeroIdentificativo"
-          placeholder="请输入申报识别号，13位数字"
+          placeholder="请输入申报识别号"
+          clearable
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="前一识别号" prop="numeroDeclaracionAnterior">
+        <el-input
+          v-model="queryParams.numeroDeclaracionAnterior"
+          placeholder="请输入前一申报识别号"
           clearable
           @keyup.enter="handleQuery"
         />
@@ -43,16 +53,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="申报期间" prop="periodo">
-        <el-select v-model="queryParams.periodo" placeholder="请选择申报期间" clearable>
-          <el-option
-            v-for="dict in model349_periodo"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
+      
       <el-form-item label="状态" prop="estado">
         <el-select v-model="queryParams.estado" placeholder="请选择状态" clearable>
           <el-option
@@ -113,7 +114,13 @@
 
     <el-table v-loading="loading" :data="modelo349DeclaranteList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="流水编码" align="center" prop="id" width="80"/>
+      <el-table-column label="流水编码" align="center" prop="id" width="80">
+        <template #default="scope">
+          <span class="link-type" @click="handleUpdate(scope.row)">
+            {{ scope.row.id }}
+          </span>
+        </template>
+      </el-table-column>
       <el-table-column label="财政年度" align="center" prop="ejercicio"  width="80"/>
       <el-table-column label="申报人NIF" align="center" prop="nifDeclarante"  width="120"/>
       <el-table-column label="申报人姓名" align="center" prop="nombreDeclarante" min-width="200" show-overflow-tooltip/>
@@ -139,7 +146,7 @@
         </template>
       </el-table-column>
       <el-table-column label="前一申报识别号" align="center" prop="numeroDeclaracionAnterior" width="130"/>
-      <el-table-column label="申报期间" align="center" prop="periodo" width="80">
+      <el-table-column label="申报期间" align="center" prop="periodo" width="90">
         <template #default="scope">
           <dict-tag :options="model349_periodo" :value="scope.row.periodo"/>
         </template>
@@ -150,7 +157,7 @@
       <el-table-column label="修正金额总额" align="center" prop="importeRectificaciones" width="80"/>
       <el-table-column label="申报频率变更指示器" align="center" prop="indicadorCambioPeriodicidad" width="90" />
       <el-table-column label="法定NIF" align="center" prop="nifRepresentanteLegal" width="120" />
-      <el-table-column label="备注" align="center" prop="remain" width="120" show-overflow-tooltip />
+      <el-table-column label="备注" align="center" prop="remark" width="120" show-overflow-tooltip />
       <el-table-column label="创建时间" align="center" prop="createTime" width="120" show-overflow-tooltip>
         <template #default="scope">
           <span>{{ parseTime(scope.row.createTime) }}</span>
@@ -228,6 +235,7 @@ const data = reactive({
     nifDeclarante: null,
     nombreDeclarante: null,
     numeroIdentificativo: null,
+    numeroDeclaracionAnterior: null,
     declaracionTipo: null,
     periodo: null,
     estado: null,
