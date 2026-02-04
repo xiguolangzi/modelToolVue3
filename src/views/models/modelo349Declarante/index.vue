@@ -122,10 +122,15 @@
         </template>
       </el-table-column>
       <el-table-column label="财政年度" align="center" prop="ejercicio"  width="80"/>
+      <el-table-column label="申请期间" align="center" prop="periodo"  width="90" show-overflow-tooltip>
+        <template #default="scope">
+          <dict-tag :options="model349_periodo" :value="scope.row.periodo"/>
+        </template>
+      </el-table-column>
       <el-table-column label="申报人NIF" align="center" prop="nifDeclarante"  width="120"/>
-      <el-table-column label="申报人姓名" align="center" prop="nombreDeclarante" min-width="200" show-overflow-tooltip/>
-      <el-table-column label="联系电话" align="center" prop="telefonoContacto" width="110"/>
-      <el-table-column label="联系人姓名" align="center" prop="personaContacto" min-width="150" show-overflow-tooltip/>
+      <el-table-column label="申报人姓名" align="left" header-align="center" prop="nombreDeclarante" min-width="200" show-overflow-tooltip/>
+      <el-table-column label="联系电话" align="left" header-align="center" prop="telefonoContacto" width="100" show-overflow-tooltip/>
+      <el-table-column label="联系人姓名" align="left" header-align="center" prop="personaContacto" width="100" show-overflow-tooltip/>
 
       <el-table-column label="申报识别号" align="center" prop="numeroIdentificativo" width="130">
         <template #default="scope">
@@ -134,29 +139,27 @@
           </span>
         </template>
       </el-table-column>
-
-      <el-table-column label="申报类型" align="center" prop="declaracionTipo" width="80" show-overflow-tooltip >
-        <template #default="scope">
-          <dict-tag :options="model349_declaration_type" :value="scope.row.declaracionTipo"/>
-        </template>
-      </el-table-column>
       <el-table-column label="状态" align="center" prop="estado" width="80">
         <template #default="scope">
           <dict-tag :options="model349_status" :value="scope.row.estado"/>
         </template>
       </el-table-column>
-      <el-table-column label="前一申报识别号" align="center" prop="numeroDeclaracionAnterior" width="130"/>
-      <el-table-column label="申报期间" align="center" prop="periodo" width="90">
+      <el-table-column label="欧盟内经营者总数" align="right" header-align="center" prop="totalOperadoresIntracomunitarios" width="80"/>
+      <el-table-column label="欧盟内交易总额" align="right" header-align="center" prop="importeOperaciones" width="120">
         <template #default="scope">
-          <dict-tag :options="model349_periodo" :value="scope.row.periodo"/>
+          <span>{{ scope.row.importeOperaciones }} €</span>
         </template>
       </el-table-column>
-      <el-table-column label="欧盟内经营者总数" align="center" prop="totalOperadoresIntracomunitarios" width="80"/>
-      <el-table-column label="欧盟内交易总额" align="center" prop="importeOperaciones" width="80"/>
-      <el-table-column label="修正的经营者总数" align="center" prop="totalOperadoresRectificaciones" width="80"/>
-      <el-table-column label="修正金额总额" align="center" prop="importeRectificaciones" width="80"/>
+      <el-table-column label="申报类型" align="center" prop="declaracionTipo" width="80" show-overflow-tooltip >
+        <template #default="scope">
+          <dict-tag :options="model349_declaration_type" :value="scope.row.declaracionTipo"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="前一申报识别号" align="center" prop="numeroDeclaracionAnterior" width="130"/>
+      <el-table-column label="修正的经营者总数" align="right" header-align="center"  prop="totalOperadoresRectificaciones" width="80"/>
+      <el-table-column label="修正金额总额" align="right" header-align="center"  prop="importeRectificaciones" width="80"/>
       <el-table-column label="申报频率变更指示器" align="center" prop="indicadorCambioPeriodicidad" width="90" />
-      <el-table-column label="法定NIF" align="center" prop="nifRepresentanteLegal" width="120" />
+      <el-table-column label="法定代表人的NIF" align="center" prop="nifRepresentanteLegal" width="120" />
       <el-table-column label="备注" align="center" prop="remark" width="120" show-overflow-tooltip />
       <el-table-column label="创建时间" align="center" prop="createTime" width="120" show-overflow-tooltip>
         <template #default="scope">
@@ -166,12 +169,6 @@
       <el-table-column label="更新时间" align="center" prop="updateTime" width="120" show-overflow-tooltip>
         <template #default="scope">
           <span>{{ parseTime(scope.row.updateTime) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width" >
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['models:modelo349Declarante:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['models:modelo349Declarante:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

@@ -84,13 +84,39 @@
             <el-tag v-if="invalidDataCount > 0" type="danger" size="large" style="margin-left: 10px;">
               异常：{{ invalidDataCount }} 条
             </el-tag>
+
+            <el-divider direction="vertical" />
+
             <el-button 
               type="warning" 
-              size="small" 
-              style="margin-left: 20px;"
+              style="margin: 0 20px;"
               @click="currentStep = 1"
             >
               重新上传
+            </el-button>
+
+            <el-divider direction="vertical" />
+
+            <el-button 
+              v-if="invalidDataCount > 0"
+              type="danger" 
+              @click="removeAllInvalid"
+            >
+              删除所有异常数据
+            </el-button>
+            <el-button 
+              type="success" 
+              @click="handleExportInvalid"
+              :disabled="invalidDataCount === 0"
+            >
+              导出异常数据
+            </el-button>
+            <el-button 
+              type="primary" 
+              @click="handleConfirmImport"
+              :disabled="invalidDataCount > 0 || previewData.length === 0"
+            >
+              确认导入
             </el-button>
           </div>
         </div>
@@ -126,27 +152,7 @@
             </div>
             
             <div class="toolbar-right">
-              <el-button 
-                v-if="invalidDataCount > 0"
-                type="danger" 
-                @click="removeAllInvalid"
-              >
-                删除所有异常数据
-              </el-button>
-              <el-button 
-                type="success" 
-                @click="handleExportInvalid"
-                :disabled="invalidDataCount === 0"
-              >
-                导出异常数据
-              </el-button>
-              <el-button 
-                type="primary" 
-                @click="handleConfirmImport"
-                :disabled="invalidDataCount > 0 || previewData.length === 0"
-              >
-                确认导入
-              </el-button>
+
             </div>
           </div>
 
@@ -230,11 +236,12 @@
           <!-- 分页器 -->
           <div class="pagination-container">
             <el-pagination
+              :background="true"
               v-model:current-page="currentPage"
               v-model:page-size="pageSize"
-              :page-sizes="[20, 50, 100, 200, 500]"
+              :page-sizes="[10, 20, 30, 50, 100]"
               :total="filteredData.length"
-              layout="total, sizes, prev, pager, next, jumper"
+              layout='total, sizes, prev, pager, next, jumper'
               @size-change="handleSizeChange"
               @current-change="handlePageChange"
             />
@@ -247,7 +254,7 @@
         <div class="step-header">
           <h2>第三步：数据处理与验证</h2>
           <el-button 
-            type="info" 
+            type="warning" 
             size="small"
             @click="cancelProcessing"
             :disabled="!isProcessing"
@@ -259,43 +266,32 @@
         <!-- 进度展示 -->
         <div class="progress-container">
           <div class="progress-overview">
-            <div class="progress-card">
-              <div class="progress-title">处理进度</div>
-              <div class="progress-main">
-                <el-progress 
-                  type="circle" 
-                  :percentage="progressPercentage" 
-                  :width="120"
-                  :stroke-width="10"
-                  :color="progressColor"
-                >
-                  <template #default>
-                    <div class="progress-text">
-                      <div class="percentage">{{ progressPercentage }}%</div>
-                      <div class="detail">已完成</div>
-                    </div>
-                  </template>
-                </el-progress>
-              </div>
-              <div class="progress-info">
-                <div class="info-item">
-                  <span class="label">总数据：</span>
-                  <span class="value">{{ totalRowsToProcess }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">已处理：</span>
-                  <span class="value">{{ processedRows }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">有效数据：</span>
-                  <span class="value">{{ processingStats.valid }}</span>
-                </div>
-              </div>
-            </div>
-
             <div class="stats-card">
-              <div class="stats-title">处理统计</div>
+              <div class="stats-title">处理进度</div>
               <div class="stats-content">
+                <div class="progress-main">
+                  <el-progress 
+                    type="circle" 
+                    :percentage="progressPercentage" 
+                    :width="120"
+                    :stroke-width="10"
+                    :color="progressColor"
+                  >
+                    <template #default>
+                      <div class="progress-text">
+                        <div class="percentage">{{ progressPercentage }}%</div>
+                        <div class="detail">已完成</div>
+                      </div>
+                    </template>
+                  </el-progress>
+                </div>
+                <div class="stat-item total">
+                  <el-icon><CircleCheck /></el-icon>
+                  <div class="stat-details">
+                    <div class="stat-count">{{ totalRowsToProcess }}</div>
+                    <div class="stat-label">总数据</div>
+                  </div>
+                </div>
                 <div class="stat-item success">
                   <el-icon><CircleCheck /></el-icon>
                   <div class="stat-details">
@@ -308,13 +304,6 @@
                   <div class="stat-details">
                     <div class="stat-count">{{ processingStats.invalid }}</div>
                     <div class="stat-label">异常</div>
-                  </div>
-                </div>
-                <div class="stat-item processing">
-                  <el-icon><Loading /></el-icon>
-                  <div class="stat-details">
-                    <div class="stat-count">{{ processingStats.processing }}</div>
-                    <div class="stat-label">处理中</div>
                   </div>
                 </div>
               </div>
@@ -378,56 +367,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 处理完成后的操作 -->
-          <div v-if="!isProcessing" class="processing-complete">
-            <div v-if="processingStats.invalid === 0" class="complete-success">
-              <el-result
-                icon="success"
-                title="数据处理完成"
-                :sub-title="`成功处理 ${processingStats.valid} 条数据，无异常数据`"
-              >
-                <template #extra>
-                  <el-button type="primary" @click="goToDataPreview">查看数据详情</el-button>
-                  <el-button @click="currentStep = 1">重新上传</el-button>
-                </template>
-              </el-result>
-            </div>
-            <div v-else class="complete-with-error">
-              <el-result
-                icon="warning"
-                title="数据处理完成"
-                :sub-title="`有效数据: ${processingStats.valid} 条，异常数据: ${processingStats.invalid} 条`"
-              >
-                <template #extra>
-                  <div class="result-actions">
-                    <el-button type="primary" @click="goToDataPreview">查看数据详情</el-button>
-                    <el-button type="success" @click="exportAllInvalidData">导出所有异常数据</el-button>
-                    <el-button @click="currentStep = 1">重新上传</el-button>
-                  </div>
-                </template>
-              </el-result>
-              
-              <div v-if="invalidDataDuringProcessing.length > 0" class="error-summary">
-                <h4>异常数据摘要（前10条）</h4>
-                <el-table
-                  :data="invalidDataDuringProcessing.slice(0, 10)"
-                  border
-                  size="small"
-                  style="width: 100%; margin-top: 10px;"
-                  max-height="200"
-                >
-                  <el-table-column prop="rowIndex" label="行号" width="80" />
-                  <el-table-column prop="errorMessage" label="异常原因" />
-                  <el-table-column prop="nifOperador" label="税号" />
-                  <el-table-column prop="nombreOperador" label="公司名称" />
-                </el-table>
-                <div v-if="invalidDataDuringProcessing.length > 10" style="text-align: center; margin-top: 10px;">
-                  还有 {{ invalidDataDuringProcessing.length - 10 }} 条异常记录...
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -470,9 +409,9 @@ const fileList = ref([])
 const currentStep = ref(1)
 const dialogTitle = computed(() => {
   const titles = {
-    1: '导入Excel标准明细 - 上传文件',
-    2: '导入Excel标准明细 - 数据预览',
-    3: '导入Excel标准明细 - 数据处理'
+    1: '导入Excel自定义1明细 - 上传文件',
+    2: '导入Excel自定义1明细 - 数据预览',
+    3: '导入Excel自定义1明细 - 数据处理'
   }
   return titles[currentStep.value]
 })
@@ -485,7 +424,7 @@ const invalidDataDuringProcessing = ref([]) // 处理过程中的异常数据
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(100)
+const pageSize = ref(50)
 const totalRows = computed(() => previewData.value.length)
 
 // 搜索和筛选
@@ -538,12 +477,12 @@ const tableHeight = computed(() => {
   return window.innerHeight - 400
 })
 
-// 表格列配置（根据您的Java实体类字段）
+// 表格列配置
 const tableColumns = [
-  { prop: 'codigoPais', label: '欧盟税号-国家代码', width: 120 },
-  { prop: 'nifOperador', label: '欧盟税号-编号', width: 130 },
-  { prop: 'nombreOperador', label: '经营者姓名', width: 150 },
-  { prop: 'claveOperacion', label: '操作代码', width: 100 },
+  { prop: 'codigoPais', label: '欧盟国家', width: 120 },
+  { prop: 'nifOperador', label: '欧盟税号', width: 130 },
+  { prop: 'nombreOperador', label: '公司名称', width: 180 },
+  { prop: 'claveOperacion', label: '销售/购买', width: 100 },
   { prop: 'baseImponible', label: '交易金额', width: 110 },
   { prop: 'ejercicioRectificacion', label: '修正的财政年度', width: 130 },
   { prop: 'periodoRectificacion', label: '修正的期间', width: 100 },
@@ -555,10 +494,10 @@ const tableColumns = [
 
 // Excel列名到实体字段的映射
 const columnMapping = {
-  "欧盟税号-国家代码": 'codigoPais',
-  "欧盟税号-编号": 'nifOperador',
-  "经营者姓名": 'nombreOperador',
-  "操作代码": 'claveOperacion',
+  "欧盟国家": 'codigoPais',
+  "欧盟税号": 'nifOperador',
+  "公司名称": 'nombreOperador',
+  "销售/购买": 'claveOperacion',
   "交易金额": 'baseImponible',
   "修正的财政年度": 'ejercicioRectificacion',
   "修正的期间": 'periodoRectificacion',
@@ -590,7 +529,7 @@ function openImportProductDialog() {
 
 /** 下载模板 */
 function importTemplate() {
-  proxy.download("models/modelo349OperadorIntra/importTemplate", {}, `349导入明细模板.xlsx`)
+  proxy.download("models/modelo349OperadorIntra/importCustomer1Template", {}, `349导入明细模板.xlsx`)
 }
 
 // 处理文件选择
@@ -787,6 +726,8 @@ const startDataProcessing = async () => {
     filteredData.value = [...previewData.value]
     
     addProcessingLog(`数据处理完成！有效数据：${processingStats.value.valid} 条，异常数据：${processingStats.value.invalid} 条`, 'success')
+
+    currentStep.value = 2
     
   } catch (error) {
     isProcessing.value = false
@@ -919,10 +860,16 @@ const validateAndMapData = (item, rowIndex) => {
           break
           
         case 'claveOperacion':
-          if (!['E', 'M', 'H', 'T', 'A', 'S', 'I', 'R', 'D', 'C'].includes(value)) {
+          if (value === '销售') {
+            mappedItem[fieldName] = 'E'
+          } else if (value === '采购') {
+            mappedItem[fieldName] = 'I'
+          } else if (value === '移仓') {
+            mappedItem[fieldName] = 'R'
+          } else {
             errors.push(`未知的操作代码`)
+            mappedItem[fieldName] = value
           }
-          mappedItem[fieldName] = value
           break
           
         case 'baseImponible':
@@ -1454,15 +1401,15 @@ defineExpose({ openImportProductDialog })
     }
   }
   
-  .pagination-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 15px;
-    padding: 10px;
-    background: #f5f7fa;
-    border-radius: 4px;
-  }
+  // .pagination-container {
+  //   display: flex;
+  //   justify-content: space-between;
+  //   align-items: center;
+  //   margin-top: 15px;
+  //   padding: 10px;
+  //   background: #f5f7fa;
+  //   border-radius: 4px;
+  // }
 }
 
 .processing-step {
@@ -1478,7 +1425,7 @@ defineExpose({ openImportProductDialog })
   
   .progress-overview {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 20px;
     margin-bottom: 30px;
     
@@ -1486,63 +1433,7 @@ defineExpose({ openImportProductDialog })
       grid-template-columns: 1fr;
     }
   }
-  
-  .progress-card {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-    
-    .progress-title {
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 15px;
-      color: #303133;
-    }
-    
-    .progress-main {
-      display: flex;
-      justify-content: center;
-      margin: 20px 0;
-      
-      .progress-text {
-        text-align: center;
-        
-        .percentage {
-          font-size: 24px;
-          font-weight: bold;
-          color: #409eff;
-        }
-        
-        .detail {
-          font-size: 12px;
-          color: #909399;
-          margin-top: 5px;
-        }
-      }
-    }
-    
-    .progress-info {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      text-align: center;
-      
-      .info-item {
-        .label {
-          color: #909399;
-          font-size: 12px;
-        }
-        
-        .value {
-          display: block;
-          font-size: 18px;
-          font-weight: bold;
-          color: #303133;
-        }
-      }
-    }
-  }
+
   
   .stats-card {
     background: white;
@@ -1559,8 +1450,30 @@ defineExpose({ openImportProductDialog })
     
     .stats-content {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 15px;
+
+      .progress-main {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0;
+        
+        .progress-text {
+          text-align: center;
+          
+          .percentage {
+            font-size: 24px;
+            font-weight: bold;
+            color: #409eff;
+          }
+          
+          .detail {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 5px;
+          }
+        }
+      }
       
       .stat-item {
         display: flex;
@@ -1765,43 +1678,6 @@ defineExpose({ openImportProductDialog })
     }
   }
   
-  .processing-complete {
-    margin-top: 30px;
-    
-    .complete-success {
-      background: white;
-      border-radius: 8px;
-      padding: 30px;
-      text-align: center;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-    }
-    
-    .complete-with-error {
-      background: white;
-      border-radius: 8px;
-      padding: 30px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-      
-      .result-actions {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 20px;
-      }
-      
-      .error-summary {
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #ebeef5;
-        
-        h4 {
-          margin: 0 0 15px 0;
-          color: #f56c6c;
-          font-weight: 500;
-        }
-      }
-    }
-  }
 }
 
 .step-actions {

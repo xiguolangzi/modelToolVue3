@@ -67,31 +67,25 @@
 
     <el-table v-loading="loading" :data="configDeclaranteList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="主键ID" align="center" prop="declaracionId"   width="70"/>
-      <el-table-column label="申报人NIF税号" align="center" prop="nifDeclarante" width="120"/>
-      <el-table-column label="申报人姓名" align="center" prop="nombreDeclarante" show-overflow-tooltip />
-      <el-table-column label="联系电话" align="center" prop="telefonoContacto"  width="120"/>
-      <el-table-column label="联系人姓名" align="center" prop="personaContacto" show-overflow-tooltip/>
-      <el-table-column label="法定代表人税号" align="center" prop="nifRepresentanteLegal"  width="120"/>
-      <el-table-column label="创建时间" align="center" prop="createTime" width="180" >
+      <el-table-column label="序号" align="center" type="index" width="50"/>
+      <el-table-column label="申报人NIF税号" align="left" header-align="center"  prop="nifDeclarante" width="120"/>
+      <el-table-column label="申报人姓名" align="left" header-align="center" prop="nombreDeclarante" min-width="200" show-overflow-tooltip />
+      <el-table-column label="联系电话" align="left" header-align="center"  prop="telefonoContacto"  width="120"/>
+      <el-table-column label="联系人姓名" align="left" header-align="center"  prop="personaContacto" show-overflow-tooltip/>
+      <el-table-column label="法定代表人税号" align="left" header-align="center"  prop="nifRepresentanteLegal"  width="120"/>
+      <el-table-column label="创建时间" align="left" header-align="center"  prop="createTime" width="120" show-overflow-tooltip >
         <template #default="scope">
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="修改时间" align="center" prop="updateTime" width="180">
+      <el-table-column label="修改时间" align="left" header-align="center"  prop="updateTime" width="120" show-overflow-tooltip>
         <template #default="scope">
           <span>{{ parseTime(scope.row.updateTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="创建人" align="center" prop="createBy" />
-      <el-table-column label="修改人" align="center" prop="updateBy" />
-      <el-table-column label="备注" align="center" prop="remark" show-overflow-tooltip />
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['models:configDeclarante:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['models:configDeclarante:remove']">删除</el-button>
-        </template>
-      </el-table-column>
+      <el-table-column label="创建人" align="left" header-align="center"  prop="createBy" width="100" show-overflow-tooltip />
+      <el-table-column label="修改人" align="left" header-align="center"  prop="updateBy" width="100" show-overflow-tooltip />
+      <el-table-column label="备注" align="left" header-align="center"  prop="remark"  width="100" show-overflow-tooltip />
     </el-table>
     
     <pagination
@@ -153,7 +147,7 @@ const data = reactive({
   form: {},
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 20,
     nifDeclarante: null,
     nombreDeclarante: null,
   },
