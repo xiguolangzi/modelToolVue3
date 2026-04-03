@@ -631,10 +631,6 @@ function generateRowId() {
   return tableRowIdGenerator.generateId()
 }
 
-// 批量生成行ID
-function generateBatchRowIds(count) {
-  return tableRowIdGenerator.generateBatchIds(count)
-}
 
 // 计算行索引
 function calculateRowIndex(tableIndex) {
@@ -818,6 +814,7 @@ function handlePageChange(page) {
   if (tableContainer) {
     tableContainer.scrollTop = 0
   }
+  
 }
 
 

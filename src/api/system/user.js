@@ -10,6 +10,15 @@ export function listUser(query) {
   })
 }
 
+// 组件查询 selectUser
+export function selectUser(query) {
+  return request({
+    url: '/system/user/selectUser',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询用户详细
 export function getUser(userId) {
   return request({

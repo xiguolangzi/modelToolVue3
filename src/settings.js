@@ -23,7 +23,7 @@ export default {
    * 是否显示 tagsView
    */
   tagsView: true,
-  
+
   /**
    * 显示页签图标
    */
@@ -52,6 +52,6 @@ export default {
   /**
    * 底部版权文本内容
    */
-  footerContent: 'Copyright © 2018-2025 RuoYi. All Rights Reserved.'
+  footerContent: ' OK云科技私人订制版本    客服电话：0034-622692021    客服微信：okyunkeji '
 }
 

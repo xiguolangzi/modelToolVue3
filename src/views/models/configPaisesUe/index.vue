@@ -78,7 +78,7 @@
     <el-table v-loading="loading" :data="configPaisesUeList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="国家代码" align="left" prop="codigoPais"  width="80"/>
-      <el-table-column label="国家名称" align="left" prop="nombrePais" width="120" />
+      <el-table-column label="国家名称" align="left" prop="nombrePais" show-overflow-tooltip />
       <el-table-column label="号码最小长度" align="left" prop="lengthMin" width="120"/>
       <el-table-column label="号码最大长度" align="left" prop="lengthMax"  width="120"/>
       <el-table-column label="号码格式描述" align="left" prop="formatoNif" show-overflow-tooltip/>

@@ -73,6 +73,13 @@
                   ></el-switch>
                 </template>
               </el-table-column>
+              <el-table-column label="用户类型" align="center" key="userType" prop="userType" v-if="columns.userType.visible" :show-overflow-tooltip="true" >
+                <template #default="scope">
+                  <dict-tag :options="sys_user_type" :value="scope.row.userType"/>
+                </template>
+              </el-table-column>
+              <el-table-column label="法定税号" align="center" key="userNif" prop="userNif" v-if="columns.userNif.visible" :show-overflow-tooltip="true" />
+              <el-table-column label="法定名称" align="center" key="userNombre" prop="userNombre" v-if="columns.userNombre.visible" :show-overflow-tooltip="true" />
               <el-table-column label="创建时间" align="center" prop="createTime" v-if="columns.createTime.visible" width="160">
                 <template #default="scope">
                   <span>{{ parseTime(scope.row.createTime) }}</span>
@@ -106,6 +113,19 @@
       <el-form :model="form" :rules="rules" ref="userRef" label-width="80px">
         <el-row>
           <el-col :span="12">
+            <el-form-item v-if="form.userId == undefined" label="登录账号" prop="userName">
+              <el-input v-model="form.userName" placeholder="请输入登录账号" maxlength="30" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-if="form.userId == undefined" label="用户密码" prop="password">
+              <el-input v-model="form.password" placeholder="请输入用户密码" type="password" maxlength="20" show-password />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="12">
             <el-form-item label="用户昵称" prop="nickName">
               <el-input v-model="form.nickName" placeholder="请输入用户昵称" maxlength="30" />
             </el-form-item>
@@ -128,18 +148,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="登录账号" prop="userName">
-              <el-input v-model="form.userName" placeholder="请输入登录账号" maxlength="30" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户密码" prop="password">
-              <el-input v-model="form.password" placeholder="请输入用户密码" type="password" maxlength="20" show-password />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        
         <el-row>
           <el-col :span="12">
             <el-form-item label="用户性别">
@@ -169,6 +178,29 @@
               <el-select v-model="form.roleIds" multiple placeholder="请选择">
                 <el-option v-for="item in roleOptions" :key="item.roleId" :label="item.roleName" :value="item.roleId" :disabled="item.status == 1"></el-option>
               </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="用户类型">
+              <el-select v-model="form.userType" placeholder="请选择">
+                <el-option v-for="dict in sys_user_type" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="法定税号">
+              <el-input v-model="form.userNif" placeholder="请输入法定税号" maxlength="30" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="法定名称">
+              <el-input v-model="form.userNombre" placeholder="请输入法定名称" maxlength="150" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -223,7 +255,7 @@ import "splitpanes/dist/splitpanes.css"
 const router = useRouter()
 const appStore = useAppStore()
 const { proxy } = getCurrentInstance()
-const { sys_normal_disable, sys_user_sex } = proxy.useDict("sys_normal_disable", "sys_user_sex")
+const { sys_normal_disable, sys_user_sex, sys_user_type } = proxy.useDict("sys_normal_disable", "sys_user_sex", "sys_user_type")
 
 const userList = ref([])
 const open = ref(false)
@@ -264,7 +296,11 @@ const columns = ref({
   deptName: { label: '部门', visible: true },
   phonenumber: { label: '手机号码', visible: true },
   status: { label: '状态', visible: true },
-  createTime: { label: '创建时间', visible: true }
+  userType: { label: '用户类型', visible: true },
+  userNif: { label: '法定税号', visible: true },
+  userNombre: { label: '法定名称', visible: true },
+  createTime: { label: '创建时间', visible: true },
+
 })
 
 const data = reactive({
@@ -478,18 +514,21 @@ function submitFileForm() {
 /** 重置操作表单 */
 function reset() {
   form.value = {
-    userId: undefined,
-    deptId: undefined,
-    userName: undefined,
-    nickName: undefined,
-    password: undefined,
-    phonenumber: undefined,
-    email: undefined,
-    sex: undefined,
+    userId: null,
+    deptId: null,
+    userName: null,
+    nickName: null,
+    password: null,
+    phonenumber: null,
+    email: null,
+    sex: null,
     status: "0",
-    remark: undefined,
+    remark: null,
     postIds: [],
-    roleIds: []
+    roleIds: [],
+    userType: "01",
+    userNif: null,
+    userNombre: null
   }
   proxy.resetForm("userRef")
 }

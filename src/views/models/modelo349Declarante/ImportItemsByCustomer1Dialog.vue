@@ -591,6 +591,7 @@ const goToStep2 = async () => {
 
   try {
     currentStep.value = 3 // 跳转到数据处理进度页面
+    cancelProcessingToken.value = null  // 重置取消标记
     await startDataProcessing()
     
   } catch (error) {
