@@ -42,3 +42,14 @@ export function delIntrastatHead(headId) {
     method: 'delete'
   })
 }
+
+
+// 导出明细text模版数据
+export function exportIntrastatDetailText(id) {
+  return request({
+    url: '/models/intrastatHead/exportIntrastatDetailText/' + id,
+    method: 'get',
+    responseType: 'blob',
+    timeout: 20000 // 20s超时
+  })
+}

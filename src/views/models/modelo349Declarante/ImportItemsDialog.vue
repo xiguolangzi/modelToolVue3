@@ -42,7 +42,6 @@
               </div>
             </template>
           </el-upload>
-          
         </div>
         
         <div class="step-actions">
@@ -66,7 +65,6 @@
             <el-icon><Download /></el-icon>
             下载导入模板
           </el-link>
-
         </div>
       </div>
 
@@ -95,9 +93,7 @@
           </div>
         </div>
 
-        <!-- 数据预览表格 -->
         <div class="preview-section">
-          <!-- 表格工具栏 -->
           <div class="table-toolbar">
             <div class="toolbar-left">
               <el-input
@@ -150,17 +146,15 @@
             </div>
           </div>
 
-          <!-- 数据表格 -->
           <div class="table-container">
             <el-table
-              :data="currentPageData"
+              :data="paginatedData"
               border
               style="width: 100%;"
               :max-height="tableHeight"
               :row-style="tableRowStyle"
               highlight-current-row
               v-loading="tableLoading"
-              :default-sort="{ prop: '_isValid', order: 'descending' }"
             >
               <el-table-column prop="rowIndex" label="行号" width="80" align="center" fixed="left">
                 <template #default="scope">
@@ -185,7 +179,7 @@
                 </template>
               </el-table-column>
               
-              <el-table-column prop="_isValid" label="状态" width="100" align="center" fixed="right" sortable>
+              <el-table-column prop="_isValid" label="状态" width="100" align="center" fixed="right">
                 <template #default="scope">
                   <el-tag 
                     :type="scope.row._isValid ? 'success' : 'danger'" 
@@ -227,7 +221,6 @@
             </el-table>
           </div>
 
-          <!-- 分页器 -->
           <div class="pagination-container">
             <el-pagination
               v-model:current-page="currentPage"
@@ -256,7 +249,6 @@
           </el-button>
         </div>
 
-        <!-- 进度展示 -->
         <div class="progress-container">
           <div class="progress-overview">
             <div class="progress-card">
@@ -321,7 +313,6 @@
             </div>
           </div>
 
-          <!-- 详细进度 -->
           <div class="detail-progress">
             <h3>数据处理详情</h3>
             <div class="progress-list">
@@ -363,7 +354,6 @@
             </div>
           </div>
 
-          <!-- 实时日志 -->
           <div class="log-container" v-if="processingLogs.length > 0">
             <h3>处理日志</h3>
             <div class="log-list">
@@ -379,7 +369,6 @@
             </div>
           </div>
 
-          <!-- 处理完成后的操作 -->
           <div v-if="!isProcessing" class="processing-complete">
             <div v-if="processingStats.invalid === 0" class="complete-success">
               <el-result
@@ -435,11 +424,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { ElMessage, ElMessageBox, genFileId  } from 'element-plus';
+import { ref, computed, getCurrentInstance } from 'vue';
+import { ElMessage, ElMessageBox, genFileId } from 'element-plus';
 import { 
   UploadFilled, Download, Search, CircleCheck, CircleClose, 
-  Loading, Clock, Document 
+  Loading, Clock
 } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
 import { tableRowIdGenerator } from '@/utils/idGenerator'
@@ -455,19 +444,33 @@ const props = defineProps({
 
 const emit = defineEmits(['changeDetail'])
 
-// 常量数据
-const MAX_LIMIT = 10000;  // 最大导入数量
-const CHUNK_SIZE = 500;   // 每批次处理的数据量
-
+// 常量
+const MAX_LIMIT = 10000
+const CHUNK_SIZE = 500
 
 // 响应式数据
 const importProductDialogRef = ref(null)
 const uploadRef = ref()
 const currentFile = ref(null)
 const fileList = ref([])
-
-// 步骤控制
 const currentStep = ref(1)
+const filteredData = ref([])
+const previewData = ref([])
+const invalidDataDuringProcessing = ref([])
+const currentPage = ref(1)
+const pageSize = ref(100)
+const searchText = ref('')
+const filterStatus = ref('')
+const tableLoading = ref(false)
+const isProcessing = ref(false)
+const totalRowsToProcess = ref(0)
+const processedRows = ref(0)
+const processingStats = ref({ valid: 0, invalid: 0, processing: 0 })
+const chunkProgress = ref([])
+const processingLogs = ref([])
+const cancelProcessingToken = ref(null)
+
+// 计算属性
 const dialogTitle = computed(() => {
   const titles = {
     1: '导入Excel标准明细 - 上传文件',
@@ -477,68 +480,42 @@ const dialogTitle = computed(() => {
   return titles[currentStep.value]
 })
 
-// 数据相关
-const rawData = ref([])          // 原始数据
-const filteredData = ref([])     // 筛选后的数据
-const previewData = ref([])      // 处理后的预览数据
-const invalidDataDuringProcessing = ref([]) // 处理过程中的异常数据
-
-// 分页相关
-const currentPage = ref(1)
-const pageSize = ref(100)
 const totalRows = computed(() => previewData.value.length)
 
-// 搜索和筛选
-const searchText = ref('')
-const filterStatus = ref('')
+const validDataCount = computed(() => {
+  return previewData.value.filter(item => item._isValid).length
+})
 
-// 数据处理进度相关
-const isProcessing = ref(false);    // 是否正在处理数据
-const totalRowsToProcess = ref(0);  // 总行数
-const processedRows = ref(0);       // 已处理行数
-const processingStats = ref({
-  valid: 0,
-  invalid: 0,
-  processing: 0
-});                                 // 数据处理统计
-const chunkProgress = ref([]);      // 数据处理进度
-const processingLogs = ref([]);     // 处理日志
-const cancelProcessingToken = ref(null);  // 用于取消数据处理
+const invalidDataCount = computed(() => {
+  return previewData.value.filter(item => !item._isValid).length
+})
 
-// 计算属性
-// 进度百分比
+// 排序后的筛选数据（按行号升序）
+const sortedFilteredData = computed(() => {
+  return [...filteredData.value].sort((a, b) => a.rowIndex - b.rowIndex)
+})
+
+// 分页数据
+const paginatedData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return sortedFilteredData.value.slice(start, end)
+})
+
 const progressPercentage = computed(() => {
   if (totalRowsToProcess.value === 0) return 0
   return Math.round((processedRows.value / totalRowsToProcess.value) * 100)
 })
-// 进度颜色
+
 const progressColor = computed(() => {
   if (processingStats.value.invalid > 0 && processingStats.value.valid === 0) return '#f56c6c'
   if (processingStats.value.invalid > 0) return '#e6a23c'
   return '#409eff'
 })
-// 验证通过数据数量
-const validDataCount = computed(() => {
-  return previewData.value.filter(item => item._isValid).length
-})
-// 验证失败数据数量
-const invalidDataCount = computed(() => {
-  return previewData.value.filter(item => !item._isValid).length
-})
 
-// 分页计算
-const currentPageData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredData.value.slice(start, end)
-})
+const tableHeight = computed(() => window.innerHeight - 400)
 
-// 表格高度（动态计算）
-const tableHeight = computed(() => {
-  return window.innerHeight - 400
-})
-
-// 表格列配置（根据您的Java实体类字段）
+// 表格列配置
 const tableColumns = [
   { prop: 'codigoPais', label: '欧盟税号-国家代码', width: 120 },
   { prop: 'nifOperador', label: '欧盟税号-编号', width: 130 },
@@ -553,7 +530,7 @@ const tableColumns = [
   { prop: 'nombreDestinatarioSustituto', label: '替代接收者姓名', width: 150 }
 ]
 
-// Excel列名到实体字段的映射
+// Excel列名映射
 const columnMapping = {
   "欧盟税号-国家代码": 'codigoPais',
   "欧盟税号-编号": 'nifOperador',
@@ -568,82 +545,51 @@ const columnMapping = {
   "替代最终接收者姓名": 'nombreDestinatarioSustituto'
 }
 
-// 行样式
-const tableRowStyle = ({ row }) => {
-  if (!row._isValid) {
-    return {
-      background: 'linear-gradient(45deg, #fff2f2 25%, #ffeaea 25%, #ffeaea 50%, #fff2f2 50%, #fff2f2 75%, #ffeaea 75%, #ffeaea)',
-      backgroundSize: '20px 20px'
-    }
-  }
-  return {}
-}
+// 允许的操作代码
+const validClaveOperacion = ['E', 'M', 'H', 'T', 'A', 'S', 'I', 'R', 'D', 'C']
 
-// 表格加载状态
-const tableLoading = ref(false)
-
-/** 打开弹窗 */
+// 方法
 function openImportProductDialog() {
   importProductDialogRef.value = true
   resetImport()
 }
 
-/** 下载模板 */
 function importTemplate() {
   proxy.download("models/modelo349OperadorIntra/importTemplate", {}, `349导入明细模板.xlsx`)
 }
 
-// 处理文件选择
 const handleFileChange = async (file) => {
   if (!file) return
-
-  // 确保能正确获取到文件对象
-  const actualFile = file.raw || file;
-  
+  const actualFile = file.raw || file
   const fileType = actualFile.name.split('.').pop().toLowerCase()
+  
   if (!['xlsx', 'xls'].includes(fileType)) {
     ElMessage.error('只能上传 .xlsx 或 .xls 格式的文件')
     return
   }
 
-  if (actualFile.size > 10 * 1024 * 1024) { // 限制10MB
+  if (actualFile.size > 10 * 1024 * 1024) {
     ElMessage.error('文件大小不能超过10MB')
     return
   }
 
   currentFile.value = actualFile
   fileList.value = [file]
-  
   ElMessage.success('文件上传成功，准备进行数据解析...')
 }
 
-const handleExceed = (files, uploadFiles) => {
-  // 清除当前文件
-  uploadRef.value.clearFiles();
-  
-  // 手动触发文件选择
-  const file = files[0];
-  file.uid = genFileId();
-  
-  // 模拟 on-change 事件
-  const uploadFile = {
-    uid: file.uid,
-    name: file.name,
-    size: file.size,
-    raw: file,
-    status: 'ready'
-  };
-  
-  handleFileChange(uploadFile);
-};
+const handleExceed = (files) => {
+  uploadRef.value?.clearFiles()
+  const file = files[0]
+  file.uid = genFileId()
+  handleFileChange({ uid: file.uid, name: file.name, size: file.size, raw: file, status: 'ready' })
+}
 
-// 处理文件移除
 const handleFileRemove = () => {
   currentFile.value = null
   fileList.value = []
 }
 
-// 跳转到数据处理
 const goToStep2 = async () => {
   if (!currentFile.value) {
     ElMessage.warning('请先上传文件')
@@ -651,39 +597,34 @@ const goToStep2 = async () => {
   }
 
   try {
-    currentStep.value = 3 // 跳转到数据处理进度页面
+    currentStep.value = 3
     await startDataProcessing()
-    
   } catch (error) {
     ElMessage.error(`文件处理失败: ${error.message}`)
     currentStep.value = 1
   }
 }
 
-// 开始数据处理
 const startDataProcessing = async () => {
   isProcessing.value = true
   processedRows.value = 0
-  processingStats.value = {
-    valid: 0,
-    invalid: 0,
-    processing: 0
-  }
+  processingStats.value = { valid: 0, invalid: 0, processing: 0 }
   chunkProgress.value = []
   processingLogs.value = []
   previewData.value = []
   invalidDataDuringProcessing.value = []
+  cancelProcessingToken.value = null
   
   addProcessingLog('开始解析Excel文件...', 'info')
   
   try {
-    // 读取Excel数据
     const rawExcelData = await readExcelFile(currentFile.value)
     
     if (rawExcelData.length === 0) {
       addProcessingLog('Excel文件中没有数据或格式不正确', 'error')
       ElMessage.error('Excel文件中没有数据或格式不正确')
       isProcessing.value = false
+      goToDataPreview()
       return
     }
 
@@ -691,16 +632,15 @@ const startDataProcessing = async () => {
       addProcessingLog(`数据量(${rawExcelData.length})超过10000条限制`, 'error')
       ElMessage.error(`数据量(${rawExcelData.length})超过10000条限制，请分批导入`)
       isProcessing.value = false
+      goToDataPreview()
       return
     }
 
     totalRowsToProcess.value = rawExcelData.length
     addProcessingLog(`成功读取 ${rawExcelData.length} 条原始数据，开始数据处理...`, 'success')
     
-    // 数据处理配置
     const totalChunks = Math.ceil(rawExcelData.length / CHUNK_SIZE)
     
-    // 初始化批次进度
     for (let i = 0; i < totalChunks; i++) {
       const start = i * CHUNK_SIZE
       const end = Math.min(start + CHUNK_SIZE, rawExcelData.length)
@@ -714,7 +654,6 @@ const startDataProcessing = async () => {
       })
     }
     
-    // 分批处理数据
     for (let i = 0; i < totalChunks; i++) {
       if (cancelProcessingToken.value === 'cancelled') {
         addProcessingLog('数据处理已被取消', 'warning')
@@ -726,12 +665,9 @@ const startDataProcessing = async () => {
       const end = Math.min(start + CHUNK_SIZE, rawExcelData.length)
       const chunkData = rawExcelData.slice(start, end)
       
-      // 更新当前批次状态
       chunkProgress.value[chunkIndex].status = 'processing'
-      
       addProcessingLog(`开始处理第 ${chunkIndex + 1} 批数据 (${start + 1}-${end})`, 'info')
       
-      // 模拟处理进度
       let progress = 0
       const progressInterval = setInterval(() => {
         progress += Math.random() * 30
@@ -743,61 +679,50 @@ const startDataProcessing = async () => {
       }, 100)
       
       try {
-        // 处理当前批次数据
-        const result = await processDataChunk(chunkData, start, chunkIndex)
+        const result = await processDataChunk(chunkData, start)
         
-        // 更新统计
         processingStats.value.valid += result.validCount
         processingStats.value.invalid += result.invalidCount
         processedRows.value = end
         
-        // 收集异常数据
-        if (result.invalidData && result.invalidData.length > 0) {
+        if (result.invalidData?.length > 0) {
           invalidDataDuringProcessing.value.push(...result.invalidData)
         }
         
-        // 更新批次状态
         clearInterval(progressInterval)
         chunkProgress.value[chunkIndex].status = 'success'
         chunkProgress.value[chunkIndex].progress = 100
         
         addProcessingLog(`第 ${chunkIndex + 1} 批处理完成，有效: ${result.validCount}，异常: ${result.invalidCount}`, 'success')
-        
-        // 小延迟，让用户看到进度
         await delay(300)
-        
       } catch (error) {
         clearInterval(progressInterval)
         chunkProgress.value[chunkIndex].status = 'error'
         chunkProgress.value[chunkIndex].errorMessage = error.message
         processingStats.value.invalid += chunkData.length
         processedRows.value = end
-        
         addProcessingLog(`第 ${chunkIndex + 1} 批处理失败: ${error.message}`, 'error')
-        
-        // 继续处理下一批
-        continue
       }
     }
     
-    // 所有数据处理完成
     isProcessing.value = false
-    
-    // 设置筛选数据
+
+    // 按行号升序排序
+    previewData.value.sort((a, b) => a.rowIndex - b.rowIndex)
     filteredData.value = [...previewData.value]
     
     addProcessingLog(`数据处理完成！有效数据：${processingStats.value.valid} 条，异常数据：${processingStats.value.invalid} 条`, 'success')
+    goToDataPreview()
     
   } catch (error) {
     isProcessing.value = false
     addProcessingLog(`数据处理出错: ${error.message}`, 'error')
     ElMessage.error(`数据处理失败: ${error.message}`)
-    currentStep.value = 1
+    goToDataPreview()
   }
 }
 
-// 处理数据批次
-const processDataChunk = async (chunkData, startIndex, chunkIndex) => {
+const processDataChunk = (chunkData, startIndex) => {
   return new Promise((resolve) => {
     setTimeout(() => {
       let validCount = 0
@@ -806,7 +731,7 @@ const processDataChunk = async (chunkData, startIndex, chunkIndex) => {
       const processedChunk = []
       
       chunkData.forEach((item, index) => {
-        const excelRowIndex = startIndex + index + 2 // +2 因为Excel从第2行开始（第1行是表头）
+        const excelRowIndex = startIndex + index + 2
         const processedItem = validateAndMapData(item, excelRowIndex)
         processedChunk.push(processedItem)
         
@@ -818,19 +743,13 @@ const processDataChunk = async (chunkData, startIndex, chunkIndex) => {
         }
       })
       
-      // 添加到预览数据
       previewData.value.push(...processedChunk)
       
-      resolve({
-        validCount,
-        invalidCount,
-        invalidData
-      })
-    }, 500 + Math.random() * 1000) // 模拟处理延迟
+      resolve({ validCount, invalidCount, invalidData })
+    }, 500 + Math.random() * 1000)
   })
 }
 
-// 读取Excel文件
 const readExcelFile = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -842,11 +761,8 @@ const readExcelFile = (file) => {
         const firstSheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[firstSheetName]
         
-        // 获取表头
         const headers = []
         const range = XLSX.utils.decode_range(worksheet['!ref'])
-
-        // 限制最大列数
         const maxCols = 20
         const endCol = Math.min(range.e.c, maxCols - 1)
 
@@ -855,12 +771,8 @@ const readExcelFile = (file) => {
           headers[C] = cell ? String(cell.v).trim() : ''
         }
 
-        // 转换为JSON
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: headers })
-        
-        // 去除表头行
         const dataRows = jsonData.slice(1).filter(row => {
-          // 过滤空行
           return Object.values(row).some(value => 
             value !== undefined && value !== null && value.toString().trim() !== ''
           )
@@ -877,25 +789,20 @@ const readExcelFile = (file) => {
   })
 }
 
-// 数据验证和映射
 const validateAndMapData = (item, rowIndex) => {
   const mappedItem = {}
   const errors = []
   
-  // 遍历映射关系
   Object.entries(columnMapping).forEach(([excelHeader, fieldName]) => {
     const excelValue = item[excelHeader]
     
-    // 处理数据
     if (excelValue !== undefined && excelValue !== null && excelValue !== '') {
       let value = excelValue
       
-      // 去除字符串两端空格
       if (typeof value === 'string') {
         value = value.toString().trim()
       }
       
-      // 根据字段类型处理
       switch (fieldName) {
         case 'codigoPais':
           if (value.length !== 2) {
@@ -912,15 +819,12 @@ const validateAndMapData = (item, rowIndex) => {
           break
           
         case 'nombreOperador':
-          if (value.length > 40) {
-            value = value.trim().substring(0, 40)
-          }
-          mappedItem[fieldName] = value
+          mappedItem[fieldName] = value.length > 40 ? value.substring(0, 40) : value
           break
           
         case 'claveOperacion':
-          if (!['E', 'M', 'H', 'T', 'A', 'S', 'I', 'R', 'D', 'C'].includes(value)) {
-            errors.push(`未知的操作代码`)
+          if (!validClaveOperacion.includes(value)) {
+            errors.push(`未知的操作代码: ${value}`)
           }
           mappedItem[fieldName] = value
           break
@@ -928,26 +832,18 @@ const validateAndMapData = (item, rowIndex) => {
         case 'baseImponible':
         case 'baseImponibleRectificada':
         case 'baseImponibleAnterior':
-          const stringValue = value.toString().trim()
-          const cleanValue = stringValue.replace(/,/g, '')
+          const cleanValue = String(value).trim().replace(/,/g, '')
+          const numValue = Number(cleanValue)
           
-          const amountRegex = /^-?\d+(\.\d{1,2})?$/
-          
-          if (!amountRegex.test(cleanValue)) {
-            const numValue = Number(cleanValue)
-            if (!isNaN(numValue)) {
-              const parts = cleanValue.split('.')
-              if (parts.length > 1 && parts[1].length > 2) {
-                errors.push(`${excelHeader} 最多只能有2位小数`)
-              } else {
-                errors.push(`${excelHeader} 格式错误`)
-              }
-            } else {
-              errors.push(`${excelHeader} 必须是有效的数字`)
-            }
+          if (isNaN(numValue)) {
+            errors.push(`${excelHeader} 必须是有效的数字`)
             mappedItem[fieldName] = null
           } else {
-            mappedItem[fieldName] = parseFloat(Number(cleanValue).toFixed(2))
+            const decimalMatch = cleanValue.match(/\.(\d+)$/)
+            if (decimalMatch && decimalMatch[1].length > 2) {
+              errors.push(`${excelHeader} 最多只能有2位小数`)
+            }
+            mappedItem[fieldName] = parseFloat(numValue.toFixed(2))
           }
           break
           
@@ -975,18 +871,6 @@ const validateAndMapData = (item, rowIndex) => {
     }
   }
   
-  if (mappedItem.ejercicioRectificacion) {
-    if (!mappedItem.periodoRectificacion) {
-      errors.push('填写修正的财政年度时必须填写修正的期间')
-    }
-    if (mappedItem.baseImponibleRectificada === null) {
-      errors.push('填写修正的财政年度时必须填写修正后的交易金额')
-    }
-    if (mappedItem.baseImponibleAnterior === null) {
-      errors.push('填写修正的财政年度时必须填写先前申报的交易金额')
-    }
-  }
-  
   const hasSomeRectification = mappedItem.ejercicioRectificacion || mappedItem.periodoRectificacion || 
                               mappedItem.baseImponibleRectificada !== null || 
                               mappedItem.baseImponibleAnterior !== null
@@ -998,87 +882,57 @@ const validateAndMapData = (item, rowIndex) => {
     }
   }
   
-  // 设置行号（Excel中的实际行号）
   mappedItem.rowIndex = rowIndex
-  
-  // 设置验证状态
-  if (errors.length > 0) {
-    mappedItem.errorMessage = errors.join('；')
-    mappedItem._isValid = false
-  } else {
-    mappedItem.errorMessage = null
-    mappedItem._isValid = true
-  }
-  
-  // 生成唯一ID
+  mappedItem.errorMessage = errors.length > 0 ? errors.join('；') : null
+  mappedItem._isValid = errors.length === 0
   mappedItem.id = tableRowIdGenerator.generateId('import')
   
   return mappedItem
 }
 
-// 取消处理
 const cancelProcessing = async () => {
   try {
     await ElMessageBox.confirm(
       '确定要取消数据处理吗？已处理的数据将会保留。',
       '确认取消',
-      {
-        confirmButtonText: '确定取消',
-        cancelButtonText: '继续处理',
-        type: 'warning'
-      }
+      { confirmButtonText: '确定取消', cancelButtonText: '继续处理', type: 'warning' }
     )
-    
     cancelProcessingToken.value = 'cancelled'
     isProcessing.value = false
     addProcessingLog('用户取消了数据处理操作', 'warning')
-    
-  } catch (error) {
-    // 用户取消
-  }
+  } catch (error) {}
 }
 
-// 跳转到数据预览
 const goToDataPreview = () => {
   currentStep.value = 2
 }
 
-// 删除单条数据
 const handleDelete = (rowIndex) => {
   const index = previewData.value.findIndex(item => item.rowIndex === rowIndex)
   if (index !== -1) {
     previewData.value.splice(index, 1)
-    handleSearch() // 重新筛选
+    handleSearch()
     ElMessage.success('删除成功')
   }
 }
 
-// 删除所有异常数据
 const removeAllInvalid = async () => {
-  if (invalidDataCount.value === 0) {
-    return
-  }
+  if (invalidDataCount.value === 0) return
   
   try {
     await ElMessageBox.confirm(
       `确定删除所有 ${invalidDataCount.value} 条异常数据吗？`,
       '确认删除',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
     
     previewData.value = previewData.value.filter(item => item._isValid)
     filteredData.value = [...previewData.value]
+    currentPage.value = 1
     ElMessage.success(`已删除 ${invalidDataCount.value} 条异常数据`)
-  } catch (error) {
-    // 用户取消
-  }
+  } catch (error) {}
 }
 
-// 确认导入
 const handleConfirmImport = async () => {
   if (previewData.value.length === 0) {
     ElMessage.warning('没有可导入的数据')
@@ -1094,24 +948,12 @@ const handleConfirmImport = async () => {
     await ElMessageBox.confirm(
       `确定导入 ${validDataCount.value} 条数据吗？`,
       '确认导入',
-      {
-        confirmButtonText: '确认导入',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+      { confirmButtonText: '确认导入', cancelButtonText: '取消', type: 'warning' }
     )
-    
-    // 执行导入
     await handleFinalImport()
-    
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(`导入确认失败: ${error.message}`)
-    }
-  }
+  } catch (error) {}
 }
 
-// 最终导入数据
 const handleFinalImport = async () => {
   try {
     const validData = previewData.value.filter(item => item._isValid)
@@ -1121,32 +963,24 @@ const handleFinalImport = async () => {
       return
     }
     
-    // 使用 emit 通知父组件数据变化
     emit('changeDetail', validData)
-    
     ElMessage.success(`成功导入 ${validData.length} 条数据`)
-    
-    // 关闭弹窗
     importProductDialogRef.value = false
-    
   } catch (error) {
     ElMessage.error(`导入数据时出错: ${error.message}`)
   }
 }
 
-// 导出所有异常数据
 const exportAllInvalidData = () => {
   const invalidData = previewData.value.filter(item => !item._isValid)
   exportInvalidData(invalidData, '所有异常数据')
 }
 
-// 导出异常数据
 const handleExportInvalid = () => {
   const invalidData = previewData.value.filter(item => !item._isValid)
   exportInvalidData(invalidData, '异常数据')
 }
 
-// 导出异常数据通用方法
 const exportInvalidData = (data, type = '异常数据') => {
   if (data.length === 0) {
     ElMessage.warning(`没有${type}可导出`)
@@ -1154,82 +988,63 @@ const exportInvalidData = (data, type = '异常数据') => {
   }
   
   try {
-    // 准备导出数据
     const exportData = data.map(item => {
       const exportItem = {}
-      // 将字段名映射回Excel列名
       Object.entries(columnMapping).forEach(([excelHeader, fieldName]) => {
-        exportItem[excelHeader] = item[fieldName] || ''
+        exportItem[excelHeader] = item[fieldName] ?? ''
       })
       exportItem['异常原因'] = item.errorMessage || '未知原因'
       exportItem['Excel行号'] = item.rowIndex
       return exportItem
     })
     
-    // 创建工作簿
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.json_to_sheet(exportData)
     XLSX.utils.book_append_sheet(wb, ws, type)
     
-    // 导出文件
     const fileName = `349_${type}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.xlsx`
     XLSX.writeFile(wb, fileName)
-    
     ElMessage.success(`导出成功，共 ${data.length} 条${type}`)
   } catch (error) {
     ElMessage.error(`导出失败: ${error.message}`)
   }
 }
 
-// 搜索处理
 const handleSearch = () => {
   tableLoading.value = true
   
   let results = [...previewData.value]
   
-  // 搜索过滤
   if (searchText.value.trim()) {
     const searchLower = searchText.value.toLowerCase()
     results = results.filter(item => 
-      (item.nombreOperador && item.nombreOperador.toLowerCase().includes(searchLower)) ||
-      (item.nifOperador && item.nifOperador.toLowerCase().includes(searchLower))
+      (item.nombreOperador?.toLowerCase().includes(searchLower)) ||
+      (item.nifOperador?.toLowerCase().includes(searchLower))
     )
   }
   
-  // 状态过滤
-  if (filterStatus.value) {
-    if (filterStatus.value === 'valid') {
-      results = results.filter(item => item._isValid)
-    } else if (filterStatus.value === 'invalid') {
-      results = results.filter(item => !item._isValid)
-    }
+  if (filterStatus.value === 'valid') {
+    results = results.filter(item => item._isValid)
+  } else if (filterStatus.value === 'invalid') {
+    results = results.filter(item => !item._isValid)
   }
   
   filteredData.value = results
   currentPage.value = 1
-  
-  setTimeout(() => {
-    tableLoading.value = false
-  }, 300)
+  setTimeout(() => { tableLoading.value = false }, 300)
 }
 
-// 筛选处理
-const handleFilter = () => {
-  handleSearch()
-}
+const handleFilter = () => handleSearch()
 
-// 分页大小变化
 const handleSizeChange = (size) => {
   pageSize.value = size
   currentPage.value = 1
 }
 
-// 页码变化
 const handlePageChange = (page) => {
   currentPage.value = page
 }
 
-// 格式化单元格值
 const formatCellValue = (value, column) => {
   if (value === null || value === undefined) return ''
   
@@ -1237,47 +1052,38 @@ const formatCellValue = (value, column) => {
     return parseFloat(value).toFixed(2)
   }
   
-  if (column === 'claveOperacion') {
-    const map = { E: '销售', I: '采购', R: '移仓', C: '替代' }
-    return map[value] || value
-  }
-  
   return String(value)
 }
 
-// 截断错误信息
 const truncateError = (error) => {
-  if (error.length > 50) {
-    return error.substring(0, 50) + '...'
-  }
-  return error
+  return error.length > 50 ? error.substring(0, 50) + '...' : error
 }
 
-// 添加处理日志
 const addProcessingLog = (message, type = 'info') => {
   const time = new Date().toLocaleTimeString()
-  processingLogs.value.unshift({
-    time,
-    message,
-    type
-  })
-  
-  // 限制日志数量
+  processingLogs.value.unshift({ time, message, type })
   if (processingLogs.value.length > 100) {
     processingLogs.value = processingLogs.value.slice(0, 100)
   }
 }
 
-// 延迟函数
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-// 弹窗关闭处理
 const handleDialogClose = () => {
   resetImport()
   importProductDialogRef.value = false
 }
 
-// 重置导入状态
+const tableRowStyle = ({ row }) => {
+  if (!row._isValid) {
+    return {
+      background: 'linear-gradient(45deg, #fff2f2 25%, #ffeaea 25%, #ffeaea 50%, #fff2f2 50%, #fff2f2 75%, #ffeaea 75%, #ffeaea)',
+      backgroundSize: '20px 20px'
+    }
+  }
+  return {}
+}
+
 const resetImport = () => {
   currentStep.value = 1
   currentFile.value = null
@@ -1289,26 +1095,18 @@ const resetImport = () => {
   currentPage.value = 1
   pageSize.value = 100
   
-  // 重置处理状态
   isProcessing.value = false
   totalRowsToProcess.value = 0
   processedRows.value = 0
-  processingStats.value = {
-    valid: 0,
-    invalid: 0,
-    processing: 0
-  }
+  processingStats.value = { valid: 0, invalid: 0, processing: 0 }
   chunkProgress.value = []
   processingLogs.value = []
   invalidDataDuringProcessing.value = []
   cancelProcessingToken.value = null
   
-  if (uploadRef.value) {
-    uploadRef.value.clearFiles()
-  }
+  uploadRef.value?.clearFiles()
 }
 
-// 暴露方法给父组件
 defineExpose({ openImportProductDialog })
 </script>
 
@@ -1328,11 +1126,6 @@ defineExpose({ openImportProductDialog })
       margin: 0 0 10px 0;
       color: #303133;
       font-weight: 500;
-    }
-    
-    .step-info {
-      color: #909399;
-      font-size: 14px;
     }
     
     .step-stats {
@@ -1376,30 +1169,13 @@ defineExpose({ openImportProductDialog })
           margin-bottom: 20px;
           color: #409eff;
         }
-        
-        .el-upload__text {
-          font-size: 16px;
-          margin-bottom: 10px;
-        }
-        
-        .el-upload__tip {
-          margin-top: 10px;
-          font-size: 14px;
-          color: #909399;
-        }
       }
     }
   }
   
-  
   .step-actions {
     margin-top: 30px;
     text-align: center;
-    
-    .el-button {
-      min-width: 150px;
-      margin: 0 10px;
-    }
   }
 }
 
@@ -1447,17 +1223,12 @@ defineExpose({ openImportProductDialog })
       .invalid-cell {
         color: #f56c6c;
       }
-      
-      .error-message {
-        cursor: help;
-      }
     }
   }
   
   .pagination-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-end;
     margin-top: 15px;
     padding: 10px;
     background: #f5f7fa;
@@ -1497,7 +1268,6 @@ defineExpose({ openImportProductDialog })
       font-size: 16px;
       font-weight: 500;
       margin-bottom: 15px;
-      color: #303133;
     }
     
     .progress-main {
@@ -1513,12 +1283,6 @@ defineExpose({ openImportProductDialog })
           font-weight: bold;
           color: #409eff;
         }
-        
-        .detail {
-          font-size: 12px;
-          color: #909399;
-          margin-top: 5px;
-        }
       }
     }
     
@@ -1529,17 +1293,8 @@ defineExpose({ openImportProductDialog })
       text-align: center;
       
       .info-item {
-        .label {
-          color: #909399;
-          font-size: 12px;
-        }
-        
-        .value {
-          display: block;
-          font-size: 18px;
-          font-weight: bold;
-          color: #303133;
-        }
+        .label { color: #909399; font-size: 12px; }
+        .value { display: block; font-size: 18px; font-weight: bold; }
       }
     }
   }
@@ -1554,7 +1309,6 @@ defineExpose({ openImportProductDialog })
       font-size: 16px;
       font-weight: 500;
       margin-bottom: 15px;
-      color: #303133;
     }
     
     .stats-content {
@@ -1568,58 +1322,15 @@ defineExpose({ openImportProductDialog })
         padding: 15px;
         border-radius: 6px;
         
-        &.success {
-          background: #f0f9ff;
-          border: 1px solid #e0f0ff;
-          
-          .el-icon {
-            color: #67c23a;
-          }
-        }
+        &.success { background: #f0f9ff; border: 1px solid #e0f0ff; .el-icon { color: #67c23a; } }
+        &.error { background: #fef0f0; border: 1px solid #fde2e2; .el-icon { color: #f56c6c; } }
+        &.processing { background: #fdf6ec; border: 1px solid #fbe8d4; .el-icon { color: #e6a23c; } }
         
-        &.error {
-          background: #fef0f0;
-          border: 1px solid #fde2e2;
-          
-          .el-icon {
-            color: #f56c6c;
-          }
-        }
-        
-        &.processing {
-          background: #fdf6ec;
-          border: 1px solid #fbe8d4;
-          
-          .el-icon {
-            color: #e6a23c;
-          }
-        }
-        
-        &.total {
-          background: #f5f7fa;
-          border: 1px solid #ebeef5;
-          
-          .el-icon {
-            color: #909399;
-          }
-        }
-        
-        .el-icon {
-          font-size: 24px;
-          margin-right: 10px;
-        }
+        .el-icon { font-size: 24px; margin-right: 10px; }
         
         .stat-details {
-          .stat-count {
-            font-size: 18px;
-            font-weight: bold;
-            color: #303133;
-          }
-          
-          .stat-label {
-            font-size: 12px;
-            color: #909399;
-          }
+          .stat-count { font-size: 18px; font-weight: bold; }
+          .stat-label { font-size: 12px; color: #909399; }
         }
       }
     }
@@ -1632,11 +1343,7 @@ defineExpose({ openImportProductDialog })
     margin-bottom: 20px;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     
-    h3 {
-      margin: 0 0 15px 0;
-      color: #303133;
-      font-weight: 500;
-    }
+    h3 { margin: 0 0 15px 0; }
     
     .progress-list {
       display: grid;
@@ -1648,52 +1355,21 @@ defineExpose({ openImportProductDialog })
         border-radius: 6px;
         border: 1px solid #ebeef5;
         
-        &.chunk-success {
-          background: #f0f9ff;
-          border-color: #e0f0ff;
-        }
-        
-        &.chunk-error {
-          background: #fef0f0;
-          border-color: #fde2e2;
-        }
-        
-        &.chunk-processing {
-          background: #fdf6ec;
-          border-color: #fbe8d4;
-        }
-        
-        &.chunk-pending {
-          background: #f5f7fa;
-          border-color: #ebeef5;
-        }
+        &.chunk-success { background: #f0f9ff; border-color: #e0f0ff; }
+        &.chunk-error { background: #fef0f0; border-color: #fde2e2; }
+        &.chunk-processing { background: #fdf6ec; border-color: #fbe8d4; }
+        &.chunk-pending { background: #f5f7fa; border-color: #ebeef5; }
         
         .chunk-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
           margin-bottom: 5px;
-          
-          .chunk-number {
-            font-weight: 500;
-            color: #303133;
-          }
-          
-          .chunk-status {
-            .el-icon {
-              &.success { color: #67c23a; }
-              &.error { color: #f56c6c; }
-              &.processing { color: #e6a23c; }
-              &.pending { color: #909399; }
-            }
-          }
         }
         
         .chunk-info {
           display: flex;
           justify-content: space-between;
           font-size: 12px;
-          color: #606266;
           margin-bottom: 5px;
         }
         
@@ -1701,7 +1377,6 @@ defineExpose({ openImportProductDialog })
           font-size: 12px;
           color: #f56c6c;
           margin-top: 5px;
-          word-break: break-word;
         }
       }
     }
@@ -1714,11 +1389,7 @@ defineExpose({ openImportProductDialog })
     margin-bottom: 20px;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     
-    h3 {
-      margin: 0 0 15px 0;
-      color: #303133;
-      font-weight: 500;
-    }
+    h3 { margin: 0 0 15px 0; }
     
     .log-list {
       max-height: 300px;
@@ -1729,36 +1400,19 @@ defineExpose({ openImportProductDialog })
         padding: 8px 10px;
         border-bottom: 1px solid #f0f0f0;
         
-        &:last-child {
-          border-bottom: none;
-        }
-        
-        &.log-info {
-          background: #f4f4f5;
-        }
-        
-        &.log-success {
-          background: #f0f9ff;
-        }
-        
-        &.log-error {
-          background: #fef0f0;
-        }
-        
-        &.log-warning {
-          background: #fdf6ec;
-        }
+        &.log-info { background: #f4f4f5; }
+        &.log-success { background: #f0f9ff; }
+        &.log-error { background: #fef0f0; }
+        &.log-warning { background: #fdf6ec; }
         
         .log-time {
           min-width: 80px;
           color: #909399;
           font-size: 12px;
-          margin-right: 10px;
         }
         
         .log-content {
           flex: 1;
-          color: #303133;
           font-size: 13px;
         }
       }
@@ -1768,20 +1422,14 @@ defineExpose({ openImportProductDialog })
   .processing-complete {
     margin-top: 30px;
     
-    .complete-success {
+    .complete-success, .complete-with-error {
       background: white;
       border-radius: 8px;
       padding: 30px;
-      text-align: center;
       box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     }
     
     .complete-with-error {
-      background: white;
-      border-radius: 8px;
-      padding: 30px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-      
       .result-actions {
         display: flex;
         justify-content: center;
@@ -1794,40 +1442,14 @@ defineExpose({ openImportProductDialog })
         padding-top: 20px;
         border-top: 1px solid #ebeef5;
         
-        h4 {
-          margin: 0 0 15px 0;
-          color: #f56c6c;
-          font-weight: 500;
-        }
+        h4 { margin: 0 0 15px 0; color: #f56c6c; }
       }
     }
   }
 }
 
-.step-actions {
-  margin-top: 20px;
-  text-align: center;
-  
-  .el-button {
-    min-width: 120px;
-    margin: 0 10px;
-  }
-}
-
-:deep(.el-table__row) {
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  }
-}
-
-:deep(.el-progress-circle) {
-  transition: all 0.3s ease;
-}
-
-:deep(.el-tag) {
-  transition: all 0.3s ease;
+:deep(.el-table__row:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 </style>

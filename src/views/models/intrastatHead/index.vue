@@ -1,26 +1,13 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="绑定客户ID" prop="userId">
-        <el-input
-          v-model="queryParams.userId"
-          placeholder="请输入绑定客户ID"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="客户用户" prop="userName">
+        <UserSelect v-model="queryParams.userName" @selectedData="selectedCustomerData" />
       </el-form-item>
-      <el-form-item label="申报的税号" prop="declarantNif">
+      <el-form-item label="申报年份" prop="periodoAno">
         <el-input
-          v-model="queryParams.declarantNif"
-          placeholder="请输入申报的税号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="申报的公司全称" prop="declarantName">
-        <el-input
-          v-model="queryParams.declarantName"
-          placeholder="请输入申报的公司全称"
+          v-model="queryParams.periodoAno"
+          placeholder="请输入申报年份"
           clearable
           @keyup.enter="handleQuery"
         />
@@ -34,14 +21,6 @@
             :value="dict.value"
           />
         </el-select>
-      </el-form-item>
-      <el-form-item label="申报年份" prop="periodoAno">
-        <el-input
-          v-model="queryParams.periodoAno"
-          placeholder="请输入申报年份"
-          clearable
-          @keyup.enter="handleQuery"
-        />
       </el-form-item>
       <el-form-item label="申报状态" prop="situacion">
         <el-select v-model="queryParams.situacion" placeholder="请选择申报状态" clearable>
@@ -103,17 +82,16 @@
 
     <el-table v-loading="loading" :data="intrastatHeadList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="主键ID" align="center" prop="headId" />
-      <el-table-column label="绑定客户ID" align="center" prop="userId" />
-      <el-table-column label="申报的税号" align="center" prop="declarantNif" />
-      <el-table-column label="申报的公司全称" align="center" prop="declarantName" />
-      <el-table-column label="代理的税号" align="center" prop="tercerDeclaranteNif" />
-      <el-table-column label="代理的公司全称" align="center" prop="tercerDeclaranteName" />
+      <el-table-column label="序号" type="index" width="50" />
+      <el-table-column label="申报税号" align="center" prop="declarantNif" />
+      <el-table-column label="申报法定名称" align="center" prop="declarantName" />
+      <el-table-column label="代理税号" align="center" prop="tercerDeclaranteNif" />
+      <el-table-column label="代理法定名称" align="center" prop="tercerDeclaranteName" />
       <el-table-column label="贸易流向" align="center" prop="flujo" />
       <el-table-column label="申报类型" align="center" prop="tipoDeclaracion" />
       <el-table-column label="海关办公室代码" align="center" prop="oficina" />
-      <el-table-column label="申报月份" align="center" prop="periodoMes" />
       <el-table-column label="申报年份" align="center" prop="periodoAno" />
+      <el-table-column label="申报月份" align="center" prop="periodoMes" />
       <el-table-column label="申报序号" align="center" prop="numDeclaracion" />
       <el-table-column label="申报状态" align="center" prop="situacion" />
       <el-table-column label="货币种类" align="center" prop="moneda" />
@@ -148,6 +126,9 @@ import { listIntrastatHead, getIntrastatHead, delIntrastatHead, addIntrastatHead
 // 导入组件
 import UserSelect from "@/components/Common/UserSelect.vue";
 
+const router = useRouter();
+const route = useRoute();
+
 const { proxy } = getCurrentInstance()
 const { intrastat_flujo, intrastat_tipo_declaracion, intrastat_detail_naturaleza_transaccion, intrastat_moneda, intrastat_detail_regimen, intrastat_detail_situacion, intrastat_periodo_mes, intrastat_situacion, intrastat_detail_condicion_entrega, intrastat_detail_puerto, intrastat_detail_modo_transporte } = proxy.useDict('intrastat_flujo', 'intrastat_tipo_declaracion', 'intrastat_detail_naturaleza_transaccion', 'intrastat_moneda', 'intrastat_detail_regimen', 'intrastat_detail_situacion', 'intrastat_periodo_mes', 'intrastat_situacion', 'intrastat_detail_condicion_entrega', 'intrastat_detail_puerto', 'intrastat_detail_modo_transporte')
 
@@ -157,12 +138,11 @@ const open = ref(false)
 const loading = ref(true)
 const showSearch = ref(true)
 const ids = ref([])
-const checkedIntrastatDetail = ref([])
 const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
-const title = ref("")
 
+const currentYear = new Date().getFullYear()
 const data = reactive({
   form: {},
   queryParams: {
@@ -172,18 +152,29 @@ const data = reactive({
     declarantNif: null,
     declarantName: null,
     periodoMes: null,
-    periodoAno: null,
+    periodoAno: currentYear,
     situacion: null,
-  },
-  rules: {
   }
 })
 
-const { queryParams, form, rules } = toRefs(data)
+const { queryParams, form } = toRefs(data)
+
+/** 选择客户 */
+function selectedCustomerData(data){
+  if(data && data.userId){
+    queryParams.value.userId = data.userId
+    queryParams.value.userName = data.userName
+  } else {
+    queryParams.value.userId = null
+    queryParams.value.userName = null
+  }
+}
 
 /** 查询欧盟内部货物贸易的统计申报列表 */
 function getList() {
   loading.value = true
+  queryParams.value.userName = null
+
   listIntrastatHead(queryParams.value).then(response => {
     intrastatHeadList.value = response.rows
     total.value = response.total
@@ -191,11 +182,6 @@ function getList() {
   })
 }
 
-// 取消按钮
-function cancel() {
-  open.value = false
-  reset()
-}
 
 // 表单重置
 function reset() {
@@ -246,21 +232,23 @@ function handleSelectionChange(selection) {
 
 /** 新增按钮操作 */
 function handleAdd() {
-  reset()
-  open.value = true
-  title.value = "添加欧盟内部货物贸易的统计申报"
+  const obj = {path: "/IntrastatManage/EditIntrastat", name:"EditIntrastat"}
+  proxy.$tab.closePage(obj).then(
+    () => {
+      router.push({ path: "/IntrastatManage/EditIntrastat"});
+    } 
+  )
 }
 
 /** 修改按钮操作 */
 function handleUpdate(row) {
-  reset()
-  const _headId = row.headId || ids.value
-  getIntrastatHead(_headId).then(response => {
-    form.value = response.data
-    intrastatDetailList.value = response.data.intrastatDetailList
-    open.value = true
-    title.value = "修改欧盟内部货物贸易的统计申报"
-  })
+  const _headId = row.headId || ids.value[0]
+  const obj = {path: "/IntrastatManage/EditIntrastat", name:"EditIntrastat"}
+  proxy.$tab.closePage(obj).then(
+    () => {
+      router.push({ path: "/IntrastatManage/EditIntrastat", query: { headId: _headId } });
+    } 
+  )
 }
 
 /** 提交按钮 */
@@ -296,34 +284,6 @@ function handleDelete(row) {
   }).catch(() => {})
 }
 
-/** intrastat申报明细序号 */
-function rowIntrastatDetailIndex({ row, rowIndex }) {
-  row.index = rowIndex + 1
-}
-
-/** intrastat申报明细添加按钮操作 */
-function handleAddIntrastatDetail() {
-  let obj = {}
-  intrastatDetailList.value.push(obj)
-}
-
-/** intrastat申报明细删除按钮操作 */
-function handleDeleteIntrastatDetail() {
-  if (checkedIntrastatDetail.value.length == 0) {
-    proxy.$modal.msgError("请先选择要删除的intrastat申报明细数据")
-  } else {
-    const intrastatDetails = intrastatDetailList.value
-    const checkedIntrastatDetails = checkedIntrastatDetail.value
-    intrastatDetailList.value = intrastatDetails.filter(function(item) {
-      return checkedIntrastatDetails.indexOf(item.index) == -1
-    })
-  }
-}
-
-/** 复选框选中数据 */
-function handleIntrastatDetailSelectionChange(selection) {
-  checkedIntrastatDetail.value = selection.map(item => item.index)
-}
 
 /** 导出按钮操作 */
 function handleExport() {
@@ -331,6 +291,15 @@ function handleExport() {
     ...queryParams.value
   }, `intrastatHead_${new Date().getTime()}.xlsx`)
 }
+
+/** 监听路由，路由跳转后更新界面数据 */
+watch(
+  () => route.fullPath,
+  () => {
+    // 路由发生变化时执行操作
+    getList();
+  },{props: true}
+);
 
 getList()
 </script>

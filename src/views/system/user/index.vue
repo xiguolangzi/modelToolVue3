@@ -195,19 +195,19 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="法定税号">
-              <el-input v-model="form.userNif" placeholder="请输入法定税号" maxlength="30" />
+              <el-input v-model="form.userNif" placeholder="请输入法定税号" maxlength="30" show-word-limit />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="法定名称">
-              <el-input v-model="form.userNombre" placeholder="请输入法定名称" maxlength="150" />
+              <el-input v-model="form.userNombre" placeholder="请输入法定名称" maxlength="100" show-word-limit />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="24">
             <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"></el-input>
+              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" maxlength="150" show-word-limit />
             </el-form-item>
           </el-col>
         </el-row>

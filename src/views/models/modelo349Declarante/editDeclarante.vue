@@ -245,10 +245,10 @@
               <template #dropdown>
                 <el-dropdown-menu >
                   <el-dropdown-item @click="importItems" :loading="submitting">
-                    <el-button type="warning" link icon="Upload" >Excel导入标准明细</el-button>
+                    <el-button type="warning" link icon="Upload" >Excel导入标准模版</el-button>
                   </el-dropdown-item>
                   <el-dropdown-item @click="importItemsByCustomer1" :loading="submitting">
-                    <el-button type="primary" link icon="Upload">Excel导入自定义1明细</el-button>
+                    <el-button type="primary" link icon="Upload">Excel导入自定义模版</el-button>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -579,7 +579,7 @@ async function handleExport349() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `349_${form.value.numeroIdentificativo}.txt`
+    link.download = `349_${form.value.nifDeclarante}_${form.value.ejercicio}_${form.value.periodo}.txt`
     link.click()
     window.URL.revokeObjectURL(url)
   } catch (error) {
@@ -866,12 +866,13 @@ const getInfoById = async () => {
   }
 }
 
+const currentYear = new Date().getFullYear();
 function reset() {
   form.value = {
     id: null, 
     tipoRegistro: '1',
     modeloDeclaracion: '349',
-    ejercicio: null,
+    ejercicio: currentYear,
     nifDeclarante: null,
     nombreDeclarante: null,
     telefonoContacto: null,

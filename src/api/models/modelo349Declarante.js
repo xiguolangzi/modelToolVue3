@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { time } from 'echarts'
 
 // 查询349模型申报人主列表
 export function listModelo349Declarante(query) {
@@ -22,7 +23,8 @@ export function addModelo349Declarante(data) {
   return request({
     url: '/models/modelo349Declarante',
     method: 'post',
-    data: data
+    data: data,
+    timeout: 20000 // 20s超时
   })
 }
 
@@ -31,7 +33,8 @@ export function updateModelo349Declarante(data) {
   return request({
     url: '/models/modelo349Declarante',
     method: 'put',
-    data: data
+    data: data,
+    timeout: 20000 // 20s超时
   })
 }
 
@@ -48,6 +51,7 @@ export function exportModelo349(id) {
   return request({
     url: `/models/modelo349Declarante/export/${id}`,
     method: 'get',
-    responseType: 'blob'
+    responseType: 'blob',
+    timeout: 20000 // 20s超时
   })
 }
