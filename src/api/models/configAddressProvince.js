@@ -9,6 +9,14 @@ export function listConfigAddressProvince(query) {
   })
 }
 
+export function selectAll(query) {
+  return request({
+    url: '/models/configAddressProvince/selectAll',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询省份配置详细
 export function getConfigAddressProvince(provinceId) {
   return request({

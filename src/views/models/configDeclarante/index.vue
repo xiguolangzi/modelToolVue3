@@ -1,18 +1,18 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="150px">
-      <el-form-item label="申报人NIF税号" prop="nifDeclarante">
+      <el-form-item label="欧盟税号" prop="nifDeclarante">
         <el-input
           v-model="queryParams.nifDeclarante"
-          placeholder="请输入申报人NIF税号"
+          placeholder="请输入欧盟税号"
           clearable
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="申报人姓名" prop="nombreDeclarante">
+      <el-form-item label="法定名称" prop="nombreDeclarante">
         <el-input
           v-model="queryParams.nombreDeclarante"
-          placeholder="请输入申报人姓名或公司名称"
+          placeholder="请输入法定名称"
           clearable
           @keyup.enter="handleQuery"
         />
@@ -68,24 +68,25 @@
     <el-table v-loading="loading" :data="configDeclaranteList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="序号" align="center" type="index" width="50"/>
-      <el-table-column label="申报人NIF税号" align="left" header-align="center"  prop="nifDeclarante" width="120"/>
-      <el-table-column label="申报人姓名" align="left" header-align="center" prop="nombreDeclarante" min-width="200" show-overflow-tooltip />
-      <el-table-column label="联系电话" align="left" header-align="center"  prop="telefonoContacto"  width="120"/>
-      <el-table-column label="联系人姓名" align="left" header-align="center"  prop="personaContacto" show-overflow-tooltip/>
-      <el-table-column label="法定代表人税号" align="left" header-align="center"  prop="nifRepresentanteLegal"  width="120"/>
-      <el-table-column label="创建时间" align="left" header-align="center"  prop="createTime" width="120" show-overflow-tooltip >
+      <el-table-column label="欧盟税号" align="left"  prop="nifDeclarante" width="120"/>
+      <el-table-column label="法定名称" align="left" prop="nombreDeclarante" min-width="200" show-overflow-tooltip />
+      <el-table-column label="联系电话" align="left"  prop="telefonoContacto"  width="120"/>
+      <el-table-column label="联系人姓名" align="left"  prop="personaContacto" show-overflow-tooltip/>
+      <el-table-column label="法定代表人税号" align="left"  prop="nifRepresentanteLegal"  width="120"/>
+      <el-table-column label="绑定客户" align="left"  prop="userName" show-overflow-tooltip width="120" />
+      <el-table-column label="创建时间" align="left"  prop="createTime" width="120" show-overflow-tooltip >
         <template #default="scope">
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="修改时间" align="left" header-align="center"  prop="updateTime" width="120" show-overflow-tooltip>
+      <el-table-column label="修改时间" align="left"  prop="updateTime" width="120" show-overflow-tooltip>
         <template #default="scope">
           <span>{{ parseTime(scope.row.updateTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="创建人" align="left" header-align="center"  prop="createBy" width="100" show-overflow-tooltip />
-      <el-table-column label="修改人" align="left" header-align="center"  prop="updateBy" width="100" show-overflow-tooltip />
-      <el-table-column label="备注" align="left" header-align="center"  prop="remark"  width="100" show-overflow-tooltip />
+      <el-table-column label="创建人" align="left"  prop="createBy" width="100" show-overflow-tooltip />
+      <el-table-column label="修改人" align="left"  prop="updateBy" width="100" show-overflow-tooltip />
+      <el-table-column label="备注" align="left"  prop="remark"  width="100" show-overflow-tooltip />
     </el-table>
     
     <pagination
@@ -99,11 +100,11 @@
     <!-- 添加或修改申报人档案对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
       <el-form ref="configDeclaranteRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="申报人NIF税号" prop="nifDeclarante">
-          <el-input v-model.trim="form.nifDeclarante" placeholder="请输入申报人NIF税号" type="textarea" :maxlength="9" :rows="1" :show-word-limit="true" />
+        <el-form-item label="欧盟税号" prop="nifDeclarante">
+          <el-input v-model.trim="form.nifDeclarante" placeholder="请输入欧盟税号" type="textarea" :maxlength="9" :rows="1" :show-word-limit="true" />
         </el-form-item>
-        <el-form-item label="申报人姓名" prop="nombreDeclarante">
-          <el-input v-model="form.nombreDeclarante" placeholder="请输入申报人姓名或公司名称" type="textarea"   :maxlength="40" :rows="1" :show-word-limit="true" />
+        <el-form-item label="法定名称" prop="nombreDeclarante">
+          <el-input v-model="form.nombreDeclarante" placeholder="请输入法定名称或公司名称" type="textarea"   :maxlength="40" :rows="1" :show-word-limit="true" />
         </el-form-item>
         <el-form-item label="联系电话" prop="telefonoContacto">
           <el-input v-model="form.telefonoContacto" placeholder="请输入联系电话" type="textarea"   :maxlength="9" :rows="1" :show-word-limit="true"/>
@@ -113,6 +114,22 @@
         </el-form-item>
         <el-form-item label="法定代表人税号" prop="nifRepresentanteLegal">
           <el-input v-model="form.nifRepresentanteLegal" placeholder="请输入法定代表人的NIF税号" type="textarea"   :maxlength="9" :rows="1" :show-word-limit="true" />
+        </el-form-item>
+        <el-form-item label="绑定客户" prop="userName">
+          <el-select 
+            v-model="form.userName" 
+            placeholder="用户名称" 
+            style="width: 100%" 
+            @change="updateUser"
+            filterable
+          >
+            <el-option
+              v-for="item in userList"
+              :key="item.userId"
+              :label="item.userName"
+              :value="item"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" type="textarea"   :maxlength="100" :rows="2" :show-word-limit="true"/>
@@ -130,6 +147,7 @@
 
 <script setup name="ConfigDeclarante">
 import { listConfigDeclarante, getConfigDeclarante, delConfigDeclarante, addConfigDeclarante, updateConfigDeclarante } from "@/api/models/configDeclarante"
+import { listUser } from "@/api/system/user.js";
 
 const { proxy } = getCurrentInstance()
 
@@ -142,6 +160,30 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref("")
+const userList = ref([])
+
+// 加载申报人列表
+async function loadUserList() {
+  try {
+    const res = await listUser()
+    if (res.code === 200) {
+      userList.value = res.rows
+    }
+  } catch (error) {
+    console.error('加载申报人列表失败:', error)
+  }
+}
+loadUserList()
+
+function updateUser(data) {
+  if (data) {
+    form.value.userId = data.userId
+    form.value.userName = data.userName
+  } else {
+    form.value.userId = null
+    form.value.userName = null
+  }
+}
 
 const data = reactive({
   form: {},

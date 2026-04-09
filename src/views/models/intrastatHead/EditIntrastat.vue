@@ -39,7 +39,7 @@
                 <el-option
                   v-for="item in declaranteList"
                   :key="item.value"
-                  :label="item.userNombre"
+                  :label="item.nombreDeclarante"
                   :value="item"
                 />
               </el-select>
@@ -168,6 +168,7 @@
             <el-button type="danger" icon="Delete" @click="handleDeleteOperador" :disabled="selectedOperadores.length === 0">
               删除选中
             </el-button>
+            <el-button type="danger" icon="Delete" @click="handleDeleteAllOperador">一键清空明细</el-button>
             <el-tag type="info" style="margin-left: 10px;">
               已添加 {{ totalOperadores }} 条记录
             </el-tag>
@@ -214,7 +215,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="交易国代码" prop="paisMiembro" :width="120" show-overflow-tooltip align="left">
+            <el-table-column label="对方国家编码" prop="paisMiembro" :width="120" show-overflow-tooltip align="left">
               <template #default="{ row }">
                 <AddressCountrySelect v-model="row.paisMiembro" :teleported="true" />
               </template>
@@ -241,11 +242,11 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="交易性质" prop="naturalezaTransaccion" :width="120" show-overflow-tooltip align="left">
+            <el-table-column label="交易种类" prop="naturalezaTransaccion" :width="120" show-overflow-tooltip align="left">
               <template #default="{ row }">
                 <el-select 
                   v-model="row.naturalezaTransaccion" 
-                  placeholder="交易性质" 
+                  placeholder="交易种类" 
                   style="width: 100%"
                   size="small"
                 >
@@ -302,7 +303,17 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="原产国代码" prop="paisOrigen" :width="120" show-overflow-tooltip align="left">
+            <el-table-column label="商品附加编码" prop="codAdicional" :width="120" show-overflow-tooltip align="left">
+              <template #default="{ row, $index }">
+                <el-input 
+                  v-model.trim="row.codAdicional" 
+                  placeholder="商品附加编码" 
+                  @focus="handleInputFocus($index, 'codAdicional')"
+                  size="small"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="原产国编码" prop="paisOrigen" :width="120" show-overflow-tooltip align="left">
               <template #default="{ row }">
                 <AddressCountrySelect v-model="row.paisOrigen" :teleported="true" />
               </template>
@@ -392,11 +403,11 @@
                 </el-input-number>
               </template>
             </el-table-column>
-            <el-table-column label="交易方税号" prop="nifIvaContraparte" :width="120" show-overflow-tooltip align="left">
+            <el-table-column label="对方欧盟税号" prop="nifIvaContraparte" :width="120" show-overflow-tooltip align="left">
               <template #default="{ row, $index }">
                 <el-input 
                   v-model.trim="row.nifIvaContraparte" 
-                  placeholder="交易方税号" 
+                  placeholder="对方欧盟税号" 
                   @focus="handleInputFocus($index, 'nifIvaContraparte')"
                   size="small"
                 />
@@ -470,6 +481,7 @@ import AddressProvinceSelect from "@/components/Common/AddressProvinceSelect.vue
 
 
 import { listUser } from "@/api/system/user.js";
+import { selectDeclarantes } from "@/api/models/configDeclarante"
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from "vue-router"
 import ImportItemsDialog from '@/views/models/intrastatHead/ImportItemsDialog.vue'
@@ -613,6 +625,7 @@ function handleAddOperador() {
     modoTransporte: null,
     puerto: null,
     mercancia: null,
+    codAdicional: null,
     paisOrigen: null,
     regimen: "1",
     masaNeta: 0.000,
@@ -660,7 +673,7 @@ function handleRemoveOperador(globalIndex) {
     return
   }
   
-  ElMessageBox.confirm(`确定删除序号：${globalIndex + 1}，交易对方税号：${row.nifIvaContraparte} 的记录吗？`, '提示', {
+  ElMessageBox.confirm(`确定删除序号：${globalIndex + 1}，对方欧盟税号：${row.nifIvaContraparte} 的记录吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -720,6 +733,23 @@ function handleDeleteOperador() {
   }).catch(() => {})
 }
 
+// 一键清空明细
+function handleDeleteAllOperador() {
+  ElMessageBox.confirm(
+    '确定要清空所有明细记录吗？',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      dangerouslyUseHTMLString: true
+    }
+  ).then(() => {
+    intrastatDetailList.value = []
+    selectedOperadores.value = []
+  })
+}
+
 // 经营者选择变化
 function handleOperadorSelectionChange(selection) {
   console.log("已勾选：", selection)
@@ -738,13 +768,6 @@ function handleRowDblClick(row, column, event) {
   // 可以在这里实现快速编辑功能
 }
 
-// 验证国家代码
-function validateCountryCode(row) {
-  if (row.codigoPais && row.codigoPais.length > 2) {
-    row.codigoPais = row.codigoPais.substring(0, 2)
-    ElMessage.warning('国家代码最多2位')
-  }
-}
 
 // 分页大小变化
 function handleSizeChange(size) {
@@ -850,32 +873,34 @@ function reset() {
 // 加载申报人列表
 async function loadDeclarantes() {
   try {
-    const params = {
-      page: 1,
-      pageSize: 300,
-      userType: '02'
-    }
-    const res = await listUser(params)
+    const res = await selectDeclarantes()
     if (res.code === 200) {
-      declaranteList.value = res.rows
-      console.log('declaranteList:', declaranteList.value)
+      declaranteList.value = res.data
     }
   } catch (error) {
     console.error('加载申报人列表失败:', error)
   }
 }
+loadDeclarantes()
 
 
 // 申报人变更处理
 function updateDeclarante(data) {
+  // if (data) {
+  //   form.value.declarantNif = data.userNif
+  //   form.value.declarantName = data.userNombre
+  //   form.value.userId = data.userId
+  // } else {
+  //   form.value.declarantNif = null
+  //   form.value.declarantName = null
+  //   form.value.userId = null
+  // }
   if (data) {
-    form.value.declarantNif = data.userNif
-    form.value.declarantName = data.userNombre
-    form.value.userId = data.userId
+    form.value.declarantName = data.nombreDeclarante
+    form.value.declarantNif = data.nifDeclarante
   } else {
-    form.value.declarantNif = null
-    form.value.declarantName = null
-    form.value.userId = null
+    form.value.nombreDeclarante = null
+    form.value.nifDeclarante = null
   }
 }
 
@@ -883,7 +908,12 @@ function updateDeclarante(data) {
 const DETAIL_VALIDATION_RULES = [
   {
     field: 'paisMiembro',
-    message: '国家代码不能为空',
+    message: '对方国家编码不能为空',
+    validator: (val) => val && val.trim()
+  },
+  {
+    field: 'provincia',
+    message: '省份代码不能为空',
     validator: (val) => val && val.trim()
   },
   {
@@ -893,7 +923,7 @@ const DETAIL_VALIDATION_RULES = [
   },
   {
     field: 'naturalezaTransaccion',
-    message: '交易性质不能为空',
+    message: '交易种类不能为空',
     validator: (val) => val && val.trim()
   },
   {
@@ -913,7 +943,7 @@ const DETAIL_VALIDATION_RULES = [
   },
   {
     field: 'nifIvaContraparte',
-    message: '交易方税号不能为空',
+    message: '对方欧盟税号不能为空',
     validator: (val) => val && val.trim()
   }
 ]

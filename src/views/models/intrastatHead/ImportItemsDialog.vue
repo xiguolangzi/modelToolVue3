@@ -439,7 +439,7 @@ import {
 } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
 import { tableRowIdGenerator } from '@/utils/idGenerator'
-import { lo } from 'element-plus/es/locales.mjs';
+import { selectAll } from "@/api/models/configAddressProvince"
 
 const { proxy } = getCurrentInstance()
 
@@ -463,6 +463,33 @@ const importProductDialogRef = ref(null)
 const uploadRef = ref()
 const currentFile = ref(null)
 const fileList = ref([])
+// 省份MAP{provinceNameEs:provinceNum,...}
+const provinceMap = ref({})
+async function selectProvinceList(){
+  const queryParams = {
+    countryCode: null,
+    communityCode: null,
+    provinceCode: null,
+    provinceNameZh: null, // 兼容中英西
+    provinceNum: null
+  }
+  
+  try {
+    const res = await selectAll(queryParams)  // ✅ 等待异步完成
+    
+    if (res.code === 200 && res.data) {
+      provinceMap.value = res.data.reduce((acc, cur) => {
+        acc[cur.provinceNameEs] = cur.provinceNum
+        return acc
+      }, {})
+      
+      console.log("获取的provinceMap：", provinceMap.value)
+    }
+  } catch (error) {
+    console.error('获取省份列表失败:', error)
+  }
+}
+selectProvinceList()
 
 // 步骤控制
 const currentStep = ref(1)
@@ -539,38 +566,40 @@ const tableHeight = computed(() => {
 
 // 表格列配置（根据您的Java实体类字段）
 const tableColumns = [
-  { prop: 'paisMiembro', label: '交易国代码', width: 120 },
+  { prop: 'paisMiembro', label: '对方国家编码', width: 120 },
   { prop: 'provincia', label: '省份代码', width: 130 },
   { prop: 'condicionEntrega', label: '交货条件', width: 150 },
-  { prop: 'naturalezaTransaccion', label: '交易性质', width: 100 },
+  { prop: 'naturalezaTransaccion', label: '交易种类', width: 100 },
   { prop: 'modoTransporte', label: '运输方式', width: 110 },
   { prop: 'puerto', label: '港口机场代码', width: 130 },
   { prop: 'mercancia', label: '商品编码', width: 100 },
-  { prop: 'paisOrigen', label: '原产国代码', width: 120 },
+  { prop: 'codAdicional', label: '商品附加编码', width: 100 },
+  { prop: 'paisOrigen', label: '原产国编码', width: 120 },
   { prop: 'regimen', label: '商品统计制度', width: 120 },
   { prop: 'masaNeta', label: '货物净重', width: 130 },
   { prop: 'unidadSuplementaria', label: '补充单位数量', width: 150 },
   { prop: 'importeFactura', label: '发票金额', width: 150 },
   { prop: 'valorEstadistico', label: '统计价值', width: 150 },
-  { prop: 'nifIvaContraparte', label: '交易对方税号', width: 150 }
+  { prop: 'nifIvaContraparte', label: '对方欧盟税号', width: 150 }
 ]
 
 // Excel列名到实体字段的映射
 const columnMapping = {
-  "交易国代码": 'paisMiembro',
+  "对方国家编码": 'paisMiembro',
   "省份代码": 'provincia',
   "交货条件": 'condicionEntrega',
-  "交易性质": 'naturalezaTransaccion',
+  "交易种类": 'naturalezaTransaccion',
   "运输方式": 'modoTransporte',
   "港口机场代码": 'puerto',
   "商品编码": 'mercancia',
-  "原产国代码": 'paisOrigen',
+  "商品附加编码": 'codAdicional',
+  "原产国编码": 'paisOrigen',
   "商品统计制度": 'regimen',
   "货物净重": 'masaNeta',
   "补充单位数量": 'unidadSuplementaria',
   "发票金额": 'importeFactura',
   "统计价值": 'valorEstadistico',
-  "交易对方税号": 'nifIvaContraparte',
+  "对方欧盟税号": 'nifIvaContraparte',
 }
 
 // 行样式
@@ -892,7 +921,7 @@ const readExcelFile = (file) => {
 
 // 字段配置：定义每个字段的校验规则和处理逻辑
 const FIELD_CONFIGS = {
-  // 2位国家代码
+  // 对方国家编码
   paisMiembro: {
     required: true,
     transform: (value) => {
@@ -901,9 +930,10 @@ const FIELD_CONFIGS = {
       return String(value).trim().toUpperCase()
     },
     validate: (value) => {
-      if (value && value.length !== 2) return '国家代码长度必须2个字符'
+      if (value && value.length !== 2) return '对方国家编码长度必须2个字符'
     }
   },
+  // 原产国编码
   paisOrigen: {
     required: true,
     transform: (value) => {
@@ -912,7 +942,38 @@ const FIELD_CONFIGS = {
       return String(value).trim().toUpperCase()
     },
     validate: (value) => {
-      if (value && value.length !== 2) return '国家代码长度必须2个字符'
+      if (value && value.length !== 2) return '原产国编码长度必须2个字符'
+    }
+  },
+  // 省份 2位数字
+  provincia: {
+    required: true,
+    transform: (value) => {
+      if (value === null || value === undefined || value === '') {
+        return null
+      }
+      
+      let str = String(value).trim()
+
+      // 1. 取前两位
+      const firstTwoChars = str.substring(0, 2)
+      // 判断前两位是否为数字
+      if (/^\d{2}$/.test(firstTwoChars)) {
+        return firstTwoChars;
+      }
+      // 2. 不是数字，模糊查询省份名称 provinceMap = {provinceNameEs:provinceNum,....}
+      console.log("获取的provinceMap=========",provinceMap.value)
+      for (const [provinceNameEs, provinceNum] of Object.entries(provinceMap.value)) {
+        if (provinceNameEs.includes(str) || str.includes(provinceNameEs)) {
+          return provinceNum;
+        } 
+      }
+
+      return str
+    },
+    validate: (value) => {
+      if (!value) return '省份代码不能为空';
+      if (value && value.length !== 2) return `省份"${value}"不存在，请输入正确的省份代码(2位数字)或省份名称`
     }
   },
   // 税号（最多15字符）
@@ -924,7 +985,7 @@ const FIELD_CONFIGS = {
       return String(value).trim()
     },
     validate: (value) => {
-      if (value && value.length > 15) return '税号长度不能超过15个字符'
+      if (value && value.length > 15) return '对方欧盟税号长度不能超过15个字符'
     }
   },
   // 交货条件（前3位，大写）
@@ -938,7 +999,7 @@ const FIELD_CONFIGS = {
       if (!value) return '交货条件不能为空'
     }
   },
-  // 交易性质（前2位）
+  // 交易种类（前2位数字）
   naturalezaTransaccion: {
     required: true,
     transform: (value) => {
@@ -946,10 +1007,10 @@ const FIELD_CONFIGS = {
       return str.trim().substring(0, 2)
     },
     validate: (value) => {
-      if (!value) return '交易性质不能为空'
+      if (!value) return '交易种类不能为空'
     }
   },
-  // 运输方式（前1位）
+  // 运输方式（前1位数字）
   modoTransporte: {
     required: true,
     transform: (value) => {
@@ -960,7 +1021,7 @@ const FIELD_CONFIGS = {
       if (!value) return '运输方式不能为空'
     }
   },
-  // 港口（前4位，可选）
+  // 港口（前4位数字，可选）
   puerto: {
     required: false,
     transform: (value) => {
@@ -977,7 +1038,11 @@ const FIELD_CONFIGS = {
       return String(value).trim()
     },
     validate: (value) => {
-      if (!value) return '商品编码不能为空'
+      if (!value){
+        return '商品编码不能为空'
+      } ;
+      if (value.length < 8 || value.length > 14) return '商品编码长度8-14个字符'
+
     }
   },
   // 统计制度（前1位）
@@ -1013,13 +1078,6 @@ const FIELD_CONFIGS = {
     decimalPlaces: 2,
     transform: (value) => parseNumber(value, 2)
   },
-  provincia: {
-    required: true,
-    transform: (value) => {
-      if (value === null || value === undefined) return ''
-      return String(value).trim()
-    }
-  }
 }
 
 // 工具函数：解析数字（支持逗号千分位，限制小数位数）
@@ -1048,20 +1106,20 @@ const parseNumber = (value, maxDecimals) => {
 // 工具函数：获取值的显示名称（用于错误消息）
 const getFieldDisplayName = (fieldName, excelHeader) => {
   const displayNames = {
-    paisMiembro: '成员国',
-    paisOrigen: '原产国',
-    nifIvaContraparte: '税号',
+    paisMiembro: '对方国家编码',
+    paisOrigen: '原产国编码',
+    nifIvaContraparte: '对方欧盟税号',
     condicionEntrega: '交货条件',
-    naturalezaTransaccion: '交易性质',
+    naturalezaTransaccion: '交易种类',
     modoTransporte: '运输方式',
     puerto: '港口机场',
     mercancia: '商品编码',
     regimen: '统计制度',
-    masaNeta: '净重',
-    unidadSuplementaria: '辅助单位',
+    masaNeta: '货物净重',
+    unidadSuplementaria: '补充单位数量',
     importeFactura: '发票金额',
     valorEstadistico: '统计金额',
-    provincia: '省份'
+    provincia: '省份代码'
   }
   return displayNames[fieldName] || excelHeader || fieldName
 }

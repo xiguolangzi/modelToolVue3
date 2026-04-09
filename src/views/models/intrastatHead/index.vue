@@ -183,33 +183,6 @@ function getList() {
 }
 
 
-// 表单重置
-function reset() {
-  form.value = {
-    headId: null,
-    userId: null,
-    declarantNif: null,
-    declarantName: null,
-    tercerDeclaranteNif: null,
-    tercerDeclaranteName: null,
-    flujo: null,
-    tipoDeclaracion: null,
-    oficina: null,
-    periodoMes: null,
-    periodoAno: null,
-    numDeclaracion: null,
-    situacion: null,
-    moneda: null,
-    localizacion: null,
-    createTime: null,
-    createBy: null,
-    updateTime: null,
-    updateBy: null,
-    remark: null
-  }
-  intrastatDetailList.value = []
-  proxy.resetForm("intrastatHeadRef")
-}
 
 /** 搜索按钮操作 */
 function handleQuery() {
@@ -251,27 +224,7 @@ function handleUpdate(row) {
   )
 }
 
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["intrastatHeadRef"].validate(valid => {
-    if (valid) {
-      form.value.intrastatDetailList = intrastatDetailList.value
-      if (form.value.headId != null) {
-        updateIntrastatHead(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功")
-          open.value = false
-          getList()
-        })
-      } else {
-        addIntrastatHead(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功")
-          open.value = false
-          getList()
-        })
-      }
-    }
-  })
-}
+
 
 /** 删除按钮操作 */
 function handleDelete(row) {
