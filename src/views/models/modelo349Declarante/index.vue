@@ -198,11 +198,9 @@ const { proxy } = getCurrentInstance()
 const { model349_operation_key, model349_declaration_type, model349_periodo, model349_status } = proxy.useDict('model349_operation_key', 'model349_declaration_type', 'model349_periodo', 'model349_status')
 
 const modelo349DeclaranteList = ref([])
-const modelo349OperadorIntraList = ref([])
 const loading = ref(true)
 const showSearch = ref(true)
 const ids = ref([])
-const checkedModelo349OperadorIntra = ref([])
 const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
@@ -223,12 +221,12 @@ function getDeclaranteList(){
 getDeclaranteList()
 
 // ------------------ 获取申报人下拉信息 end ------------------
-
+const currentYear = new Date().getFullYear() // 当前年份
 const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 50,
-    ejercicio: null,
+    ejercicio: currentYear,
     nifDeclarante: null,
     nombreDeclarante: null,
     numeroIdentificativo: null,

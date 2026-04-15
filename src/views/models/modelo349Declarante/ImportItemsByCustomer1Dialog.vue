@@ -517,7 +517,7 @@ const tableHeight = computed(() => window.innerHeight - 400)
 
 // 表格列配置
 const tableColumns = [
-  { prop: 'codigoPais', label: '欧盟国家', width: 120 },
+  { prop: 'codigoPais', label: '国家', width: 120 },
   { prop: 'nifOperador', label: '欧盟税号', width: 130 },
   { prop: 'nombreOperador', label: '公司名称', width: 180 },
   { prop: 'claveOperacion', label: '销售/购买', width: 100 },
@@ -532,7 +532,7 @@ const tableColumns = [
 
 // Excel列名映射
 const columnMapping = {
-  "欧盟国家": 'codigoPais',
+  "国家": 'codigoPais',
   "欧盟税号": 'nifOperador',
   "公司名称": 'nombreOperador',
   "销售/购买": 'claveOperacion',
