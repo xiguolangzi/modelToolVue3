@@ -230,6 +230,9 @@
             <el-button type="danger" icon="Delete" @click="handleDeleteOperador" :disabled="selectedOperadores.length === 0">
               删除选中
             </el-button>
+            <el-button type="danger" icon="Delete" @click="handleDeleteAllOperador" >
+              清空明细
+            </el-button>
             <el-tag type="info" style="margin-left: 10px;">
               已添加 {{ totalOperadores }} 条记录
             </el-tag>
@@ -770,6 +773,27 @@ function handleDeleteOperador() {
     }
     
     ElMessage.success(`成功删除 ${selectedIds.length} 条记录`)
+  }).catch(() => {})
+}
+
+// 清除所有明细
+function handleDeleteAllOperador() { 
+  ElMessageBox.confirm(
+    '确定要清空所有明细记录吗？',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      dangerouslyUseHTMLString: true
+    }
+  ).then(() => {
+    modelo349OperadorIntraList.value = []
+    selectedOperadores.value = []
+    // 重新计算总计
+    calculateTotals()
+
+    ElMessage.success('已清空所有明细记录')
   }).catch(() => {})
 }
 

@@ -844,11 +844,17 @@ const validateAndMapData = (item, rowIndex) => {
             errors.push(`${excelHeader} 必须是有效的数字`)
             mappedItem[fieldName] = null
           } else {
-            const decimalMatch = cleanValue.match(/\.(\d+)$/)
-            if (decimalMatch && decimalMatch[1].length > 2) {
-              errors.push(`${excelHeader} 最多只能有2位小数`)
-            } 
-            mappedItem[fieldName] = parseFloat(numValue.toFixed(2))
+            // 验证是否为负数（根据西班牙349号表格规范，所有金额必须为正数）
+            if (numValue < 0) {
+              errors.push(`${excelHeader} 不能为负数，所有金额必须为正数（根据模型349规范）`)
+              mappedItem[fieldName] = parseFloat(numValue.toFixed(2))
+            } else {
+              const decimalMatch = cleanValue.match(/\.(\d+)$/)
+              if (decimalMatch && decimalMatch[1].length > 2) {
+                errors.push(`${excelHeader} 最多只能有2位小数`)
+              } 
+              mappedItem[fieldName] = parseFloat(numValue.toFixed(2))
+            }
           }
           break
           
