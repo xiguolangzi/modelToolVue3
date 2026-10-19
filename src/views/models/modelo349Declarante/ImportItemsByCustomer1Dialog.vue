@@ -815,6 +815,19 @@ const validateAndMapData = (item, rowIndex) => {
           if (value.length > 15) {
             errors.push(`税号长度不能超过15个字符`)
           }
+
+          // 检查前两个字符必须是大写字母
+          // if (value.length >= 2) {
+          //   const prefix = value.substring(0, 2)
+          //   const isTwoUppercaseLetters = /^[A-Z]{2}$/.test(prefix)
+            
+          //   if (!isTwoUppercaseLetters) {
+          //     errors.push(`税号必须以两个大写字母开头，当前前缀为"${prefix}"`)
+          //   }
+          // } else {
+          //   errors.push(`税号必须以国家代码开头`)
+          // }
+
           mappedItem[fieldName] = value
           break
           
@@ -823,7 +836,7 @@ const validateAndMapData = (item, rowIndex) => {
           break
           
         case 'claveOperacion':
-          const opMap = { '销售': 'E', '采购': 'I', '移仓': 'R' }
+          const opMap = { '销售': 'E', '采购': 'I', '移仓销售': 'R', '移仓采购': 'A' }
           if (opMap[value]) {
             mappedItem[fieldName] = opMap[value]
           } else {
@@ -892,6 +905,17 @@ const validateAndMapData = (item, rowIndex) => {
       errors.push('修正信息必须完整填写')
     }
   }
+
+  // 在所有字段处理完成后，添加跨字段校验 检查国家代码是否存在且税号前缀是否匹配
+  // const countryCode = mappedItem.codigoPais
+  // const nifOperador = mappedItem.nifOperador
+
+  // if (countryCode && nifOperador && nifOperador.length >= 2) {
+  //   const prefix = nifOperador.substring(0, 2).toUpperCase()
+  //   if (prefix !== countryCode.toUpperCase()) {
+  //     errors.push(`税号前缀（${prefix}）与国家代码（${countryCode}）不一致`)
+  //   }
+  // }
   
   mappedItem.rowIndex = rowIndex
   mappedItem.errorMessage = errors.length > 0 ? errors.join('；') : null
