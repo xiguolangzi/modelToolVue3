@@ -823,10 +823,15 @@ const validateAndMapData = (item, rowIndex) => {
           break
           
         case 'claveOperacion':
-          if (!validClaveOperacion.includes(value)) {
-            errors.push(`未知的操作代码: ${value}`)
+          const opMap = { '销售': 'E', '采购': 'I', '移仓销售': 'R', '移仓采购': 'A', '递延': 'A' }
+          if (opMap[value]) {
+            mappedItem[fieldName] = opMap[value]
+          } else {
+            if (!validClaveOperacion.includes(value)) {
+              errors.push(`未知的操作代码: ${value}`)
+            }
+            mappedItem[fieldName] = value
           }
-          mappedItem[fieldName] = value
           break
           
         case 'baseImponible':

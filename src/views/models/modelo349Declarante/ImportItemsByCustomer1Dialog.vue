@@ -836,7 +836,7 @@ const validateAndMapData = (item, rowIndex) => {
           break
           
         case 'claveOperacion':
-          const opMap = { '销售': 'E', '采购': 'I', '移仓销售': 'R', '移仓采购': 'A' }
+          const opMap = { '销售': 'E', '采购': 'I', '移仓销售': 'R', '移仓采购': 'A', '递延': 'A' }
           if (opMap[value]) {
             mappedItem[fieldName] = opMap[value]
           } else {
